@@ -1,0 +1,53 @@
+{
+  "name": "echo-skill-loop",
+  "profileMode": "preset",
+  "loopProfile": "evaluation-loop",
+  "topologyPreset": "evaluation-visible",
+  "phaseGraph": ["run", "judgment"],
+  "roleCounts": {
+    "runner": 1,
+    "judgment": 1
+  },
+  "sessionPrefix": "echo-skill-loop",
+  "windowName": "team",
+  "defaultRuntime": "codex",
+  "agentCommandEnv": "STATION_AGENT_COMMAND",
+  "defaultAgentCommand": "CODEX_BIN=\"${STATION_CODEX_BIN:-codex}\"; exec \"$CODEX_BIN\" --no-alt-screen -C \"$STATION_AGENT_CWD\" --sandbox danger-full-access --dangerously-bypass-approvals-and-sandbox",
+  "codexRuntime": {
+    "invokerDefault": {
+      "model": "gpt-5.4",
+      "model_reasoning_effort": "low"
+    }
+  },
+  "targetSkillName": "$echo-skill",
+  "runnerForbiddenPatterns": [],
+  "runtimePolicy": {
+    "attachRequired": true,
+    "allowDetached": false,
+    "transportPolicy": {
+      "activationFailurePolicy": "fail_fast"
+    }
+  },
+  "layout": {
+    "mode": "full-team-visible",
+    "splitFallback": "new-window",
+    "operatorPanePolicy": "retain-left",
+    "sectionDirection": "vertical"
+  },
+  "locations": {
+    "stationRoot": ".",
+    "providerRoot": "provider",
+    "releaseRoot": "release",
+    "consumerRoot": "consumer",
+    "consumerInstallTarget": "consumer/.codex/skills/echo-skill",
+    "targetSkillInstallPath": "consumer/.codex/skills/echo-skill",
+    "caseRoot": "cases"
+  },
+  "caseManifest": "cases.json",
+  "terminalPolicy": {
+    "pass": "case_passed",
+    "needsProvider": "case_failed_needs_provider",
+    "knownUnsupported": "case_known_unsupported",
+    "failedFinal": "case_failed_final"
+  }
+}

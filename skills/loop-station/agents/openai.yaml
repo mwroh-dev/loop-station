@@ -1,0 +1,6 @@
+interface:
+  display_name: "Loop Station (Local Preview)"
+  short_description: "Local preview for custom tmux/Codex loop harnesses."
+  default_prompt: "Use $loop-station to install or run a project-local tmux/Codex loop harness."
+policy:
+  allow_implicit_invocation: false

@@ -1,0 +1,557 @@
+#!/usr/bin/env node
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { dirname, relative, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { createInterface } from "node:readline/promises";
+import { stdin as input, stdout as output } from "node:process";
+import { assertConsumerSafeSetupSpec, projectLocalLoopStationSkillRoot as localSkillRootForProject } from "./consumer-mode.js";
+import { discoverSkillProfile } from "../skills/loop-station/assets/harness-template/src/skill-contract-discovery.js";
+import { materializeAgentsFromLayout, normalizeLayoutConfig } from "../skills/loop-station/assets/harness-template/src/layout-config.js";
+import { profileDefinition } from "../skills/loop-station/assets/harness-template/src/profiles.js";
+
+const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+const TEMPLATE = join(ROOT, "skills", "loop-station", "assets", "harness-template");
+const SKILL_SOURCE = join(ROOT, "skills", "loop-station");
+
+const [command, ...args] = process.argv.slice(2);
+
+try {
+  if (!command || command === "help" || command === "--help" || command === "-h") {
+    printHelp();
+  } else if (command === "install-skill") {
+    installSkill(args);
+  } else if (command === "install") {
+    install(args);
+  } else if (command === "setup") {
+    await setup(args);
+  } else if (command === "init") {
+    init(args);
+  } else if (command === "interview") {
+    interview();
+  } else {
+    throw new Error(`Unknown command: ${command}`);
+  }
+} catch (error) {
+  console.error(error.message);
+  process.exitCode = 1;
+}
+
+async function setup(args) {
+  const project = resolve(readOption(args, "--project") ?? process.cwd());
+  requireInstalledLoopStationSkill(project);
+  const specPath = readOption(args, "--spec");
+  const replace = args.includes("--replace");
+  const stationRoot = join(project, ".loop-station");
+  const spec = specPath
+    ? JSON.parse(readFileSync(resolve(specPath), "utf8"))
+    : await promptSetupSpec(project);
+  assertConsumerSafeSetupSpec(project, spec);
+  const seeded = seedSetupSpec(project, spec);
+  scaffoldSetupStageSkills(project, seeded);
+
+  if (replace && existsSync(stationRoot)) {
+    rmSync(stationRoot, { recursive: true, force: true });
+  }
+  if (!existsSync(stationRoot)) {
+    mkdirSync(project, { recursive: true });
+    cpSync(TEMPLATE, stationRoot, { recursive: true, filter: shouldInstallTemplatePath });
+    mkdirSync(join(stationRoot, "runs"), { recursive: true });
+    mkdirSync(join(stationRoot, "cases"), { recursive: true });
+  }
+
+  const config = buildSetupStationConfig(project, seeded);
+  writeFileSync(join(stationRoot, "station.json"), `${JSON.stringify(config, null, 2)}\n`);
+  console.log(`Configured loop-station setup at ${stationRoot}`);
+}
+
+function installSkill(args) {
+  const project = resolve(readOption(args, "--project") ?? process.cwd());
+  const skillRoot = localSkillRootForProject(project);
+  const replace = args.includes("--replace");
+  const existed = existsSync(skillRoot);
+  if (existed && !replace) {
+    console.log(`Existing loop-station skill install at ${skillRoot}`);
+    return;
+  }
+  if (existed && replace) {
+    rmSync(skillRoot, { recursive: true, force: true });
+  }
+
+  mkdirSync(dirname(skillRoot), { recursive: true });
+  cpSync(SKILL_SOURCE, skillRoot, { recursive: true });
+  console.log(`${existed ? "Replaced" : "Installed"} loop-station skill at ${skillRoot}`);
+}
+
+function install(args) {
+  const project = resolve(readOption(args, "--project") ?? process.cwd());
+  const stationRoot = join(project, ".loop-station");
+  const replace = args.includes("--replace");
+  const existed = existsSync(stationRoot);
+  if (existed && !replace) {
+    console.log(`Existing loop-station install at ${stationRoot}`);
+    return;
+  }
+  if (existed && replace) {
+    rmSync(stationRoot, { recursive: true, force: true });
+  }
+
+  mkdirSync(project, { recursive: true });
+  cpSync(TEMPLATE, stationRoot, {
+    recursive: true,
+    filter: shouldInstallTemplatePath
+  });
+  mkdirSync(join(stationRoot, "runs"), { recursive: true });
+  mkdirSync(join(stationRoot, "cases"), { recursive: true });
+  writeFileSync(join(stationRoot, "station.json"), `${JSON.stringify(projectStationConfig(), null, 2)}\n`);
+  console.log(`${existed ? "Replaced" : "Installed"} loop-station install at ${stationRoot}`);
+}
+
+function init(args) {
+  const force = args.includes("--force");
+  const destinationArg = args.find((arg) => !arg.startsWith("--"));
+  if (!destinationArg) throw new Error("Usage: loop-station init <dir> [--force]");
+  const destination = resolve(destinationArg);
+  if (existsSync(destination)) {
+    const entries = readdirSync(destination);
+    if (entries.length > 0 && !force) {
+      throw new Error(`Destination is not empty: ${destination}`);
+    }
+    if (force) rmSync(destination, { recursive: true, force: true });
+  }
+  mkdirSync(dirname(destination), { recursive: true });
+  cpSync(TEMPLATE, destination, { recursive: true, filter: shouldInstallTemplatePath });
+  console.log(`Initialized loop-station harness at ${destination}`);
+}
+
+function interview() {
+  console.log(`Loop Station interview draft:
+
+1. Which loop profile fits this workflow: evaluation-loop, recovery-loop, installation-loop, or action-pipeline?
+2. Which target skill or skills should the runner use, and should each be copied into the project-local <consumerRoot>/.codex/skills/<skill> install path?
+3. For each target skill stage, what user input should be sent, what output artifact should be produced, and what evidence proves the public skill entry actually ran?
+4. Which typed roles are required for this profile: runner, judgment, observer, provider engineer, deploy verifier, or installer?
+5. Should the current operator pane stay on the left while Loop Station opens a managed section on the right?
+6. Inside that managed right-side section, should panes stack vertical or horizontal, and how many typed role panes should exist for the active profile?
+7. Which roots matter for each role: station, sandbox, consumer, provider, release, case data, or custom workdirs?
+8. How are cases or action inputs discovered, and which files are required or optional?
+9. Which artifacts, manifests, transcripts, or verifier results prove each stage is complete?
+10. Which actor owns each phase: human_user, station_capture_controller, runner_model, skill_runtime, or evaluator_model?
+11. What outcomes should advance, rerun, hand off to a provider/judge, pause for humans, or stop the loop?
+
+Use the loop-station skill Install Mode to present a setup proposal before creating .loop-station/station.json.
+Skill-install-only requests install .codex/skills/* only; they do not create .loop-station.
+Use loop-station install-skill to place the skill in the project-local .codex/skills directory first.
+Use loop-station setup to turn the approved setup proposal into .loop-station/station.json after the local skill install exists.
+The runtime always stays visible: trigger from the current Codex session, then attach or open a visible Terminal-backed tmux runtime.
+For normal installs, preserve existing .loop-station. For destructive test refreshes, use loop-station install --replace --project <dir>.`);
+}
+
+function readOption(args, name) {
+  const index = args.indexOf(name);
+  if (index !== -1) return args[index + 1];
+  const inline = args.find((arg) => arg.startsWith(`${name}=`));
+  return inline ? inline.slice(name.length + 1) : null;
+}
+
+function projectStationConfig() {
+  const config = JSON.parse(readFileSync(join(TEMPLATE, "station.json"), "utf8"));
+  return {
+    ...config,
+    locations: {
+      ...config.locations,
+      stationRoot: ".",
+      providerRoot: "..",
+      consumerRoot: ".."
+    },
+    caseManifest: "cases.json"
+  };
+}
+
+function requireInstalledLoopStationSkill(project) {
+  const skillRoot = localSkillRootForProject(project);
+  const skillDoc = join(skillRoot, "SKILL.md");
+  if (existsSync(skillDoc)) return skillRoot;
+  throw new Error(`Loop Station skill is not installed at ${skillRoot}. Run "loop-station install-skill --project ${project}" first.`);
+}
+
+async function promptSetupSpec(project) {
+  if (!process.stdin.isTTY) {
+    throw new Error("loop-station setup requires --spec in non-interactive mode");
+  }
+  const rl = createInterface({ input, output });
+  try {
+    const loopType = await rl.question("Loop type (skill-benchmark|skill-improvement|evaluation-only|recovery-loop|installation-loop|action-pipeline|multi-stage-runner): ");
+    const targetSkillRaw = await rl.question("Target skills (comma-separated, optional): ");
+    const sectionDirection = await rl.question("Right managed section direction (vertical|horizontal) [vertical]: ");
+    const targetSkills = targetSkillRaw.split(",").map((value) => value.trim()).filter(Boolean);
+    const seeded = seedSetupSpec(project, {
+      loopType: loopType.trim(),
+      targetSkills,
+      layout: { sectionDirection: sectionDirection.trim() || "vertical" }
+    });
+    const roleCounts = {};
+    for (const role of ["runner", seeded.reviewRole, "provider", "monitor", "installer"]) {
+      if (!role) continue;
+      const current = seeded.roles[role] ?? 0;
+      if (current < 1 && !["monitor", "installer"].includes(role)) continue;
+      const answer = await rl.question(`${role} count [${current}]: `);
+      roleCounts[role] = answer.trim() === "" ? current : Number.parseInt(answer.trim(), 10);
+    }
+    return {
+      ...seeded,
+      roles: { ...seeded.roles, ...roleCounts }
+    };
+  } finally {
+    rl.close();
+  }
+}
+
+function seedSetupSpec(project, inputSpec = {}) {
+  const loopType = normalizeLoopType(inputSpec.loopType);
+  const loopProfile = loopProfileForLoopType(loopType);
+  const stageContracts = normalizeSetupStageContracts(project, inputSpec.stageContracts ?? []);
+  const implicitTargetSkills = stageContracts
+    .filter((stage) => stage.skill)
+    .map((stage) => ({ name: stage.skill, installPath: stage.installPath }));
+  const targetSkills = normalizeSetupTargetSkills(project, [...(inputSpec.targetSkills ?? []), ...implicitTargetSkills]);
+  const profiles = targetSkills.map((targetSkill) => discoverSkillProfile({
+    name: targetSkill.name,
+    installPath: targetSkill.installPath,
+    requestText: inputSpec.requestText ?? ""
+  }));
+  const reviewRole = inputSpec.reviewRole === "judge" ? "judge" : "evaluator";
+  const roles = seedRoleCounts(loopType, reviewRole);
+  const explicitRoles = inputSpec.roles ?? {};
+  for (const [role, count] of Object.entries(explicitRoles)) {
+    roles[role] = normalizeCount(count);
+  }
+  roles.orchestrator = 1;
+  roles["station-control"] = 1;
+  const layout = normalizeLayoutConfig({
+    ...inputSpec.layout,
+    operatorPanePolicy: "retain-left",
+    sectionDirection: inputSpec.layout?.sectionDirection ?? "vertical",
+    groupOrder: ["control", "runners", "evaluators", "providers", "monitors", "custom"]
+  });
+  return {
+    loopType,
+    loopProfile,
+    targetSkills,
+    profiles,
+    reviewRole,
+    roles,
+    customRoles: Array.isArray(inputSpec.customRoles) ? inputSpec.customRoles : [],
+    locations: inputSpec.locations ?? {},
+    layout,
+    stageContracts,
+    runtimePolicy: {
+      attachRequired: inputSpec.runtimePolicy?.attachRequired !== false,
+      allowDetached: inputSpec.runtimePolicy?.allowDetached === true,
+      allowGenericActionStages: inputSpec.runtimePolicy?.allowGenericActionStages === true
+    },
+    codexRuntime: normalizeCodexRuntimeSpec(inputSpec.codexRuntime ?? {
+      invokerDefault: readCodexInvokerDefaults()
+    })
+  };
+}
+
+function buildSetupStationConfig(project, spec) {
+  const config = projectStationConfig();
+  const { agents: _unusedAgents, ...configWithoutAgents } = config;
+  const definition = profileDefinition(spec.loopProfile);
+  const roleCounts = presetRoleCounts(spec);
+  const layout = normalizeLayoutConfig({
+    ...config.layout,
+    ...spec.layout,
+    operatorPanePolicy: "retain-left",
+    sectionDirection: spec.layout.sectionDirection,
+    groupOrder: spec.layout.groupOrder
+  });
+  if (Array.isArray(layout.groups) && layout.groups.length === 0) delete layout.groups;
+  const targetSkills = spec.targetSkills.map((targetSkill) => ({
+    name: targetSkill.name,
+    installPath: targetSkill.installPath
+  }));
+  const actionPipeline = spec.stageContracts.length > 0;
+  const targetSkillName = !actionPipeline && targetSkills.length === 1 ? targetSkills[0].name : null;
+  const multiTargetSkills = actionPipeline || targetSkills.length > 1 ? targetSkills : [];
+  return {
+    ...configWithoutAgents,
+    profileMode: "preset",
+    loopProfile: spec.loopProfile,
+    topologyPreset: definition?.topologyPreset ?? `${spec.loopProfile}-visible`,
+    phaseGraph: definition?.phaseGraph ?? [],
+    repairContract: definition?.repairContract ?? null,
+    roleCounts,
+    ...(actionPipeline ? { pipelineMode: "action-stages", stageContracts: spec.stageContracts } : {}),
+    targetSkillName,
+    targetSkills: multiTargetSkills,
+    layout,
+    runtime: {
+      autoDispatch: true
+    },
+    runtimePolicy: spec.runtimePolicy,
+    codexRuntime: spec.codexRuntime,
+    locations: {
+      ...config.locations,
+      ...normalizeSetupLocations(project, spec.locations),
+      ...(targetSkillName && targetSkills[0]?.installPath ? { targetSkillInstallPath: targetSkills[0].installPath } : {})
+    }
+  };
+}
+
+function normalizeSetupStageContracts(project, stageContracts) {
+  if (!Array.isArray(stageContracts)) return [];
+  return stageContracts.map((stage, index) => {
+    const stageId = stage.id ?? `stage-${index + 1}`;
+    const skill = stage.skill ? normalizeStageSkillName(stage.skill) : null;
+    const installPath = skill
+      ? resolve(project, stage.installPath ?? join(".codex", "skills", skill.replace(/^\$/, "")))
+      : (stage.installPath ? resolve(project, stage.installPath) : null);
+    return {
+      ...stage,
+      id: stageId,
+      ...(skill ? { skill } : {}),
+      ...(installPath ? { installPath } : {}),
+      requiredArtifacts: stage.requiredArtifacts ?? ["runner-report.md", "runner-metadata.json", "output-manifest.json"],
+      artifactSchemas: stage.artifactSchemas ?? {}
+    };
+  });
+}
+
+function normalizeStageSkillName(name) {
+  const slug = String(name).replace(/^\$/, "");
+  return `$${slug}`;
+}
+
+function buildManagedSectionGroups(spec) {
+  const groups = [];
+  groups.push({ role: "orchestrator", count: 1, visible: true, cwd: "stationRoot", inputs: [], requiredArtifacts: [] });
+  groups.push({ role: "station-control", count: 1, visible: true, cwd: "stationRoot", inputs: [], requiredArtifacts: [] });
+  for (const role of ["runner", "evaluator", "judge", "provider", "monitor", "installer"]) {
+    const count = normalizeCount(spec.roles[role]);
+    if (count < 1) continue;
+    groups.push({ role, count, visible: true });
+  }
+  for (const customRole of spec.customRoles ?? []) {
+    const count = normalizeCount(customRole.count);
+    if (count < 1) continue;
+    groups.push({
+      role: customRole.role ?? "custom",
+      alias: customRole.alias,
+      count,
+      visible: customRole.visible !== false,
+      cwd: customRole.cwd ?? "stationRoot",
+      inputs: customRole.inputs ?? [],
+      requiredArtifacts: customRole.requiredArtifacts ?? []
+    });
+  }
+  return groups;
+}
+
+function normalizeSetupTargetSkills(project, targetSkills) {
+  const seen = new Set();
+  return targetSkills.map((targetSkill) => {
+    if (typeof targetSkill === "string") {
+      const slug = targetSkill.replace(/^\$/, "");
+      const normalized = {
+        name: `$${slug}`,
+        installPath: join(project, ".codex", "skills", slug)
+      };
+      if (seen.has(normalized.name)) return null;
+      seen.add(normalized.name);
+      return normalized;
+    }
+    const slug = String(targetSkill.name ?? targetSkill.targetSkillName ?? "").replace(/^\$/, "");
+    const normalized = {
+      name: `$${slug}`,
+      installPath: targetSkill.installPath ? resolve(project, targetSkill.installPath) : join(project, ".codex", "skills", slug)
+    };
+    if (seen.has(normalized.name)) return null;
+    seen.add(normalized.name);
+    return normalized;
+  }).filter(Boolean);
+}
+
+function normalizeSetupLocations(project, locations) {
+  const next = {};
+  for (const [key, value] of Object.entries(locations ?? {})) {
+    next[key] = typeof value === "string" ? value : value;
+  }
+  return next;
+}
+
+function seedRoleCounts(loopType, reviewRole) {
+  const roles = {
+    orchestrator: 1,
+    "station-control": 1,
+    runner: 1,
+    evaluator: 0,
+    judge: 0,
+    provider: 0,
+    monitor: 0,
+    installer: 0
+  };
+  roles[reviewRole] = 1;
+  switch (loopType) {
+    case "skill-improvement":
+    case "recovery-loop":
+      roles.runner = 2;
+      roles.provider = 1;
+      roles.monitor = 1;
+      break;
+    case "installation-loop":
+      roles.runner = 1;
+      roles.provider = 1;
+      roles.installer = 1;
+      roles.monitor = 1;
+      break;
+    case "evaluation-only":
+      roles.runner = 2;
+      break;
+    case "multi-stage-runner":
+      roles.runner = 2;
+      roles.monitor = 1;
+      break;
+    default:
+      break;
+  }
+  return roles;
+}
+
+function loopProfileForLoopType(loopType) {
+  switch (loopType) {
+    case "skill-improvement":
+    case "recovery-loop":
+      return "recovery-loop";
+    case "installation-loop":
+      return "installation-loop";
+    case "action-pipeline":
+    case "multi-stage-runner":
+      return "action-pipeline";
+    default:
+      return "evaluation-loop";
+  }
+}
+
+function presetRoleCounts(spec) {
+  const counts = {};
+  if ((spec.roles.runner ?? 0) > 0) counts.runner = spec.roles.runner;
+  if ((spec.roles.evaluator ?? 0) > 0 || (spec.roles.judge ?? 0) > 0) counts.judgment = Math.max(spec.roles.evaluator ?? 0, spec.roles.judge ?? 0);
+  if ((spec.roles.monitor ?? 0) > 0) counts.observer = spec.roles.monitor;
+  if ((spec.roles.provider ?? 0) > 0) counts.provider_engineer = spec.roles.provider;
+  if ((spec.roles.installer ?? 0) > 0) counts.installer = spec.roles.installer;
+
+  const definition = profileDefinition(spec.loopProfile);
+  for (const [role, count] of Object.entries(definition?.defaultRoleCounts ?? {})) {
+    counts[role] ??= count;
+  }
+  return counts;
+}
+
+function normalizeLoopType(loopType) {
+  const allowed = new Set([
+    "skill-benchmark",
+    "skill-improvement",
+    "evaluation-only",
+    "recovery-loop",
+    "installation-loop",
+    "action-pipeline",
+    "multi-stage-runner"
+  ]);
+  return allowed.has(loopType) ? loopType : "skill-benchmark";
+}
+
+function normalizeCount(value) {
+  const count = Number.parseInt(String(value ?? 0), 10);
+  return Number.isFinite(count) && count > 0 ? count : 0;
+}
+
+function scaffoldSetupStageSkills(project, spec) {
+  for (const stage of spec.stageContracts ?? []) {
+    if (!stage.skill || !stage.installPath || existsSync(join(stage.installPath, "SKILL.md"))) continue;
+    mkdirSync(stage.installPath, { recursive: true });
+    writeFileSync(join(stage.installPath, "SKILL.md"), stageSkillManifest(stage));
+  }
+}
+
+function stageSkillManifest(stage) {
+  const slug = String(stage.skill).replace(/^\$/, "");
+  return `---
+name: ${slug}
+description: Stage wrapper skill for ${stage.id}.
+---
+
+# ${slug}
+
+Complete only the \`${stage.id}\` stage.
+
+- Follow the case prompt and stage instructions already provided by Loop Station.
+- Write only the required station artifacts for this stage.
+- Do not read unrelated files.
+- Do not modify case input files.
+- Do not continue into later stages.
+`;
+}
+
+function readCodexInvokerDefaults() {
+  const configPath = join(process.env.HOME ?? homedir(), ".codex", "config.toml");
+  if (!existsSync(configPath)) return {};
+  const text = readFileSync(configPath, "utf8");
+  const model = matchTomlString(text, "model");
+  const effort = matchTomlString(text, "model_reasoning_effort");
+  return normalizeCodexProfile({
+    ...(model ? { model } : {}),
+    ...(effort ? { model_reasoning_effort: effort } : {})
+  });
+}
+
+function matchTomlString(text, key) {
+  const pattern = new RegExp(`^${key}\\s*=\\s*["']([^"']+)["']\\s*$`, "m");
+  return text.match(pattern)?.[1] ?? null;
+}
+
+function normalizeCodexRuntimeSpec(codexRuntime = {}) {
+  return {
+    invokerDefault: normalizeCodexProfile(codexRuntime.invokerDefault ?? {}),
+    roleDefaults: Object.fromEntries(
+      Object.entries(codexRuntime.roleDefaults ?? {}).map(([role, profile]) => [role, normalizeCodexProfile(profile)])
+    ),
+    agentOverrides: Object.fromEntries(
+      Object.entries(codexRuntime.agentOverrides ?? {}).map(([name, profile]) => [name, normalizeCodexProfile(profile)])
+    )
+  };
+}
+
+function normalizeCodexProfile(profile = {}) {
+  const next = {};
+  if (profile.model) next.model = String(profile.model);
+  if (profile.model_reasoning_effort) next.model_reasoning_effort = String(profile.model_reasoning_effort);
+  return next;
+}
+
+function shouldInstallTemplatePath(source) {
+  const rel = relative(TEMPLATE, source);
+  if (!rel) return true;
+  const [top] = rel.split(/[\\/]/);
+  return !["config", "eval", "runs", "test"].includes(top);
+}
+
+function printHelp() {
+  console.log(`loop-station
+
+Usage:
+  loop-station install-skill [--project <dir>] [--replace]
+  loop-station install [--project <dir>] [--replace]
+  loop-station setup [--project <dir>] [--spec <json-file>] [--replace]
+  loop-station init <dir> [--force]
+  loop-station interview
+
+Notes:
+  install-skill copies the skill bundle into <project>/.codex/skills/loop-station only.
+  install preserves an existing .loop-station by default.
+  install --replace deletes and recreates .loop-station for clean test refreshes.
+  setup requires a project-local loop-station skill install and only generates .loop-station.
+  setup writes preset profile configs by default; freeform harness editing is advanced-legacy compatibility only.`);
+}

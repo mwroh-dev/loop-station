@@ -1,0 +1,104 @@
+{
+  "name": "loop-station-harness",
+  "sessionPrefix": "loop-station",
+  "windowName": "team",
+  "defaultRuntime": "codex",
+  "agentCommandEnv": "STATION_AGENT_COMMAND",
+  "defaultAgentCommand": "CODEX_BIN=\"${STATION_CODEX_BIN:-codex}\"; exec \"$CODEX_BIN\" --no-alt-screen -C \"$STATION_AGENT_CWD\" --sandbox danger-full-access --dangerously-bypass-approvals-and-sandbox",
+  "targetSkillName": null,
+  "targetSkills": [],
+  "stageContracts": [],
+  "runnerForbiddenPatterns": [],
+  "layout": {
+    "mode": "full-team-visible",
+    "splitFallback": "new-window",
+    "sectionDirection": "vertical"
+  },
+  "locations": {
+    "stationRoot": ".",
+    "providerRoot": ".",
+    "releaseRoot": null,
+    "consumerRoot": ".",
+    "consumerInstallTarget": null,
+    "targetSkillInstallPath": null,
+    "caseRoot": "cases"
+  },
+  "caseManifest": "cases.json",
+  "agents": [
+    {
+      "name": "StationControl",
+      "kind": "code",
+      "cwd": "stationRoot",
+      "lifecycle": "run-scoped",
+      "visible": true
+    },
+    {
+      "name": "RunnerAgent-Model",
+      "kind": "model",
+      "cwd": "consumerRoot",
+      "lifecycle": "attempt-scoped",
+      "visible": true,
+      "inputs": ["RUN_SKILL_CASE"],
+      "requiredArtifacts": ["runner-report.md", "runner-metadata.json", "output-manifest.json"]
+    },
+    {
+      "name": "EvaluatorAgent-Model",
+      "kind": "model",
+      "cwd": "stationRoot",
+      "lifecycle": "attempt-scoped",
+      "visible": true,
+      "inputs": ["EVALUATE_CASE"],
+      "requiredArtifacts": ["eval-report.md", "eval-verdict.json"]
+    },
+    {
+      "name": "ProviderCodex-Model",
+      "kind": "model",
+      "cwd": "providerRoot",
+      "lifecycle": "case-scoped",
+      "visible": true,
+      "inputs": ["REPORT_CASE_RESULT_TO_PROVIDER_CODEX"],
+      "requiredArtifacts": ["provider-response.md", "provider-response.json"]
+    },
+    {
+      "name": "MonitorAgent-Model",
+      "kind": "model",
+      "cwd": "stationRoot",
+      "lifecycle": "run-scoped",
+      "visible": true,
+      "inputs": ["RUN_STATUS"],
+      "requiredArtifacts": []
+    }
+  ],
+  "flow": [
+    {
+      "id": "run",
+      "actor": "RunnerAgent-Model",
+      "messageType": "RUN_SKILL_CASE",
+      "awaitArtifacts": ["runner-report.md", "runner-metadata.json", "output-manifest.json"]
+    },
+    {
+      "id": "evaluate",
+      "actor": "EvaluatorAgent-Model",
+      "messageType": "EVALUATE_CASE",
+      "awaitArtifacts": ["eval-report.md", "eval-verdict.json"]
+    }
+  ],
+  "timeouts": {
+    "paneReadyMs": 15000,
+    "messageSubmitMs": 10000,
+    "artifactWaitMs": 1800000,
+    "artifactIntervalMs": 2000,
+    "stuckMs": 120000
+  },
+  "repairPolicy": {
+    "target": "ProviderCodex-Model",
+    "forbiddenTargets": ["caseOutputDir", "consumerGeneratedArtifacts"],
+    "rerun": "sameCase"
+  },
+  "terminalPolicy": {
+    "pass": "case_passed",
+    "needsProvider": "case_failed_needs_provider",
+    "knownUnsupported": "case_known_unsupported",
+    "failedFinal": "case_failed_final"
+  }
+}

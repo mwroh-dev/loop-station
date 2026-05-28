@@ -1,0 +1,16 @@
+[
+  {
+    "id": "echo-001",
+    "folder": "cases/echo-001",
+    "prompt": "cases/echo-001/prompt.md",
+    "optionalInputs": [],
+    "evaluationMode": "prompt-grounded"
+  },
+  {
+    "id": "echo-002",
+    "folder": "cases/echo-002",
+    "prompt": "cases/echo-002/prompt.md",
+    "optionalInputs": [],
+    "evaluationMode": "prompt-grounded"
+  }
+]

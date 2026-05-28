@@ -1,0 +1,17 @@
+{
+  "name": "loop-station",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "loop-station": "./bin/loop-station"
+  },
+  "scripts": {
+    "test": "node --test --test-concurrency=1 test/*.test.js skills/loop-station/assets/harness-template/test/*.test.js",
+    "validate:template": "node skills/loop-station/assets/harness-template/bin/station validate",
+    "smoke:template": "node skills/loop-station/assets/harness-template/bin/station smoke-run-one"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

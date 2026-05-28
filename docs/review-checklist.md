@@ -1,0 +1,38 @@
+# Review Checklist
+
+- `npm test` passes.
+- Public guide fixtures validate without private provider repos.
+- Skill Contract Discovery was run before interview/setup for every target skill.
+- Natural-language setup produced a proposal before creating `.loop-station`; skill-install-only requests did not create a harness.
+- Project-local `.codex/skills/loop-station` install exists before setup generates `.loop-station`.
+- Preset mode is the default public authoring path; any freeform station config is explicitly marked `advanced-legacy`.
+- Consumer-mode guidance treats `.codex/skills/loop-station/**` as read-only and does not name installed bundle `src/` or `test/` paths as mutable targets.
+- Stage contracts include layer authority and human checkpoint evidence requirements.
+- Consumer action stages declare public wrapper skills and do not rely on generic prompt-only stage execution.
+- Runner envelopes contain configured public target skill entries and no raw station JSON.
+- Model-visible control lines do not inline raw mailbox JSON; they point to mailbox request/started/reply paths.
+- Runner envelopes include allowed public runtime boundaries and do not include long forbidden-word policy dumps.
+- Runner forbidden guard patterns validate before start and invalid patterns fail with `runner_guard_pattern_invalid`.
+- Action-stage required JSON artifacts have declared schemas, and stage advancement is blocked when schema or provenance validation fails.
+- Action-stage mailbox activation evidence is present but not treated as proof that the stage skill executed.
+- Browser-flow manual capture stops at `awaiting_capture`; no direct search URL substitution is accepted as human browser input.
+- Multi-skill stations validate every `targetSkills` entry before dispatch.
+- `targetSkillName` is not combined with `targetSkills`.
+- Runner pass artifacts do not advance a case before evaluator pass artifacts.
+- Runner artifacts include provenance, and station failures use `loop-station-failure.*` instead of fabricated runner artifacts.
+- `station start` always launches a visible runtime. Inside tmux it keeps the operator pane on the left and opens the managed station section on the right using the configured `vertical` or `horizontal` section layout; outside tmux it surfaces an owned session through an attached Terminal.app window.
+- Missing tmux or missing pane targets fail the run instead of falling back to mock panes.
+- Model pane startup prompts or blocked readiness states fail before dispatch.
+- Queued follow-up text is not treated as automatic contamination; same-pane reuse is allowed only after the prior mailbox task is closed.
+- No same-pane dispatch occurs while the previous mailbox task for that pane is still outstanding.
+- Model message activation never advances from raw pane text; every model role writes started JSON before task work.
+- Missing started JSON surfaces as `activation_ack_missing`.
+- Provider handoff envelopes hide internal message types and agent ids.
+- Stale consumer `.loop-station` harnesses are replaced from the canonical template, not patched in Run Mode.
+- Failure cases do not advance before valid provider response files.
+- Invalid `fixed` responses produce a follow-up and keep the same active case.
+- Activation failure handling does not hide failures behind indefinite retry loops; `fail_fast` or one recycle attempt is explicit in runtime policy.
+- Manual override requires `--override` and leaves an event trail.
+- Cleanup stops tmux sessions and background orchestrator processes.
+- No private provider path or domain-specific local setup is required by core tests or public guide fixtures.
+- `docs/review-package.md` is current with public API, known risks, and review commands.

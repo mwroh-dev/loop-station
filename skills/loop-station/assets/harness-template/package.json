@@ -1,0 +1,20 @@
+{
+  "name": "loop-station-harness",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "station": "./bin/station"
+  },
+  "scripts": {
+    "boot": "node ./bin/station boot",
+    "start": "node ./bin/station start",
+    "status": "node ./bin/station status",
+    "cleanup": "node ./bin/station cleanup",
+    "smoke:run-one": "node ./bin/station smoke-run-one",
+    "test": "node --test --test-concurrency=1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
