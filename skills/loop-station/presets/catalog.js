@@ -1,9 +1,9 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { ROLE_TYPE_ORDER } from "./definitions.js";
 
 const catalogRoot = dirname(fileURLToPath(import.meta.url));
-const roles = ["orchestrator", "runner", "judgment"];
 const weights = {
   signalMatch: 35,
   authorityFit: 20,
@@ -15,14 +15,14 @@ const weights = {
 export function loadPresetCatalog(root = catalogRoot) {
   const shared = {};
   const rolePresets = {};
-  for (const role of roles) {
+  for (const role of ROLE_TYPE_ORDER) {
     shared[role] = readJson(join(root, "shared", `${role}.json`));
     rolePresets[role] = readdirSync(join(root, "roles", role))
       .filter((file) => file.endsWith(".json"))
       .sort()
       .map((file) => readJson(join(root, "roles", role, file)));
   }
-  return { root, roles: [...roles], shared, rolePresets };
+  return { root, roles: [...ROLE_TYPE_ORDER], shared, rolePresets };
 }
 
 export function recommendRolePresets(signals = {}, catalog = loadPresetCatalog()) {

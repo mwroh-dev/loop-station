@@ -7,27 +7,61 @@
   "specialization": "stage-bound-action",
   "purpose": "Execute exactly one declared stage through the allowed boundary, write stage artifacts, and stop before any later stage.",
   "signals": {
-    "workUnitShape": ["ordered-stage"],
-    "runtimeBoundary": ["public-skill-only", "allowed-runtime-call"],
-    "mutationBoundary": ["consumer-output", "no-mutation"]
+    "workUnitShape": [
+      "ordered-stage"
+    ],
+    "runtimeBoundary": [
+      "public-skill-only",
+      "allowed-runtime-call"
+    ],
+    "mutationBoundary": [
+      "consumer-output",
+      "no-mutation"
+    ]
   },
   "authority": {
-    "adds": ["execute_one_stage", "write_stage_artifacts", "stop_after_assigned_stage"],
-    "forbids": ["continue_unassigned_stage", "infer_next_stage_from_context"]
+    "adds": [
+      "execute_one_stage",
+      "write_stage_artifacts",
+      "stop_after_assigned_stage"
+    ],
+    "forbids": [
+      "continue_unassigned_stage",
+      "infer_next_stage_from_context"
+    ]
   },
   "artifacts": {
-    "required": ["runner-report.md", "runner-metadata.json", "output-manifest.json"],
+    "required": [
+      "runner-report.md",
+      "runner-metadata.json",
+      "output-manifest.json"
+    ],
     "provenanceRequired": true
   },
   "recommendation": {
     "defaultConfidence": "medium",
-    "preferredWhen": ["stageContracts.length > 0", "workUnitShape == ordered-stage"],
-    "avoidWhen": ["workUnitShape == human-checkpoint", "stageContracts.length == 0"]
+    "preferredWhen": [
+      "stageContracts.length > 0",
+      "workUnitShape == ordered-stage"
+    ],
+    "avoidWhen": [
+      "workUnitShape == human-checkpoint",
+      "stageContracts.length == 0"
+    ]
   },
   "compatibility": {
-    "requiresOrchestratorCapabilities": ["stage_order_gate", "single_active_stage"],
-    "compatibleOrchestratorCapabilities": ["stage_contract_dispatch", "single_active_stage"],
-    "compatibleJudgmentCapabilities": ["artifact_contract", "process_evidence"]
+    "requiresOrchestratorCapabilities": [
+      "stage_order_gate",
+      "single_active_stage"
+    ],
+    "compatibleOrchestratorCapabilities": [
+      "stage_contract_dispatch",
+      "single_active_stage"
+    ],
+    "compatibleJudgmentCapabilities": [
+      "artifact_contract",
+      "process_evidence"
+    ]
   },
   "promptReference": "prompts/roles/runner/stage-bound-action.md",
   "selfReviewChecklist": [

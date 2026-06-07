@@ -7,27 +7,63 @@
   "specialization": "human-checkpoint",
   "purpose": "Prepare the assigned work, stop for a human-owned action, and record checkpoint evidence without replacing the human step.",
   "signals": {
-    "workUnitShape": ["human-checkpoint", "ordered-stage"],
-    "runtimeBoundary": ["human-owned-runtime", "public-skill-only"],
-    "mutationBoundary": ["consumer-output", "no-mutation"]
+    "workUnitShape": [
+      "human-checkpoint",
+      "ordered-stage"
+    ],
+    "runtimeBoundary": [
+      "human-owned-runtime",
+      "public-skill-only"
+    ],
+    "mutationBoundary": [
+      "consumer-output",
+      "no-mutation"
+    ]
   },
   "authority": {
-    "adds": ["prepare_checkpoint_context", "stop_for_human_action", "record_checkpoint_evidence"],
-    "forbids": ["automate_human_owned_action", "synthesize_checkpoint_evidence"]
+    "adds": [
+      "prepare_checkpoint_context",
+      "stop_for_human_action",
+      "record_checkpoint_evidence"
+    ],
+    "forbids": [
+      "automate_human_owned_action",
+      "synthesize_checkpoint_evidence"
+    ]
   },
   "artifacts": {
-    "required": ["runner-report.md", "runner-metadata.json", "output-manifest.json", "checkpoint-evidence.json"],
+    "required": [
+      "runner-report.md",
+      "runner-metadata.json",
+      "output-manifest.json",
+      "checkpoint-evidence.json"
+    ],
     "provenanceRequired": true
   },
   "recommendation": {
     "defaultConfidence": "high",
-    "preferredWhen": ["workUnitShape == human-checkpoint", "evidenceStrictness == human-evidence-required"],
-    "avoidWhen": ["runtimeBoundary == station-owned-runtime", "workUnitShape == parallel-candidate"]
+    "preferredWhen": [
+      "workUnitShape == human-checkpoint",
+      "evidenceStrictness == human-evidence-required"
+    ],
+    "avoidWhen": [
+      "runtimeBoundary == station-owned-runtime",
+      "workUnitShape == parallel-candidate"
+    ]
   },
   "compatibility": {
-    "requiresOrchestratorCapabilities": ["human_checkpoint_pause", "checkpoint_evidence_gate"],
-    "compatibleOrchestratorCapabilities": ["human_checkpoint_pause", "resume_after_human_evidence"],
-    "compatibleJudgmentCapabilities": ["artifact_contract", "process_evidence"]
+    "requiresOrchestratorCapabilities": [
+      "human_checkpoint_pause",
+      "checkpoint_evidence_gate"
+    ],
+    "compatibleOrchestratorCapabilities": [
+      "human_checkpoint_pause",
+      "resume_after_human_evidence"
+    ],
+    "compatibleJudgmentCapabilities": [
+      "artifact_contract",
+      "process_evidence"
+    ]
   },
   "promptReference": "prompts/roles/runner/human-checkpoint.md",
   "selfReviewChecklist": [

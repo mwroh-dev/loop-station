@@ -74,9 +74,11 @@ Names ending in `-Model` are LLM agents in tmux panes. Names without `-Model` ar
 
 - `references/interview.md`: Install Mode decisions.
 - `references/skill-contract-discovery.md`: pre-interview target skill contract discovery.
-- `references/role-machine-presets.md`: role machine preset concepts for Orchestrator, Runner, and Judgment.
+- `references/role-machine-presets.md`: role machine preset overview and focused role reference index.
+- `references/role-machine-presets/`: focused role machine concept, boundary, Orchestrator, Runner, and Judgment references.
 - `references/preset-recommendation-flow.md`: setup-time role preset recommendation procedure.
-- `references/preset-catalog.md`: built-in role preset catalog structure, levels, and scoring.
+- `references/preset-catalog.md`: built-in role preset catalog overview and focused catalog reference index.
+- `references/preset-catalog/`: source layout, scoring, materialization, and authoring references.
 - `references/backlog.md`: deferred preset work and explicit non-goals.
 - `references/runtime-contract.md`: State machine and completion rules.
 - `references/public-safety-boundary.md`: Public authority and prompt boundary.

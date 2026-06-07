@@ -15,6 +15,7 @@ import {
   materializePresetRecommendation,
   recommendRolePresets
 } from "../skills/loop-station/presets/catalog.js";
+import { ROLE_TYPE_ORDER } from "../skills/loop-station/presets/definitions.js";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const TEMPLATE = join(ROOT, "skills", "loop-station", "assets", "harness-template");
@@ -174,7 +175,7 @@ async function promptPresetSelections(recommendation, signals) {
   const rl = createInterface({ input, output });
   const selections = { roles: {} };
   try {
-    for (const role of ["orchestrator", "runner", "judgment"]) {
+    for (const role of ROLE_TYPE_ORDER) {
       const bundle = recommendation[role];
       const candidates = [bundle.selected, ...(bundle.alternates ?? [])].filter(Boolean);
       output.write(`\n${rolePresetQuestion(role, bundle.selected, signals)}\n`);

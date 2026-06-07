@@ -10,11 +10,26 @@ import {
   recommendRolePresets,
   scoreRolePreset
 } from "../skills/loop-station/presets/catalog.js";
+import { ROLE_PRESET_DEFINITIONS, ROLE_PRESET_PROMPTS, ROLE_TYPE_ORDER, SHARED_TRAIT_PACKS } from "../skills/loop-station/presets/definitions.js";
 
 const root = new URL("..", import.meta.url).pathname;
 const presetRoot = join(root, "skills", "loop-station", "presets");
 const sharedRoot = join(presetRoot, "shared");
 const roleRoot = join(presetRoot, "roles");
+
+describe("preset generated artifacts", () => {
+  it("keeps generated JSON and prompt files synchronized with preset definitions", () => {
+    assert.deepEqual(Object.keys(SHARED_TRAIT_PACKS).sort(), [...ROLE_TYPE_ORDER].sort());
+    for (const role of ROLE_TYPE_ORDER) {
+      assert.deepEqual(readSharedPack(role), SHARED_TRAIT_PACKS[role]);
+      const generatedPresets = expectedPresetNames(role).map((presetName) => readRolePreset(role, presetName));
+      assert.deepEqual(generatedPresets, ROLE_PRESET_DEFINITIONS[role]);
+      for (const preset of ROLE_PRESET_DEFINITIONS[role]) {
+        assert.equal(readPresetPrompt(preset.promptReference).trimEnd(), ROLE_PRESET_PROMPTS[preset.id]);
+      }
+    }
+  });
+});
 
 describe("preset catalog shared trait packs", () => {
   const expected = {
@@ -298,6 +313,14 @@ function readSharedPack(role) {
 
 function readRolePreset(role, presetName) {
   return JSON.parse(readFileSync(join(roleRoot, role, `${presetName}.json`), "utf8"));
+}
+
+function readPresetPrompt(promptReference) {
+  return readFileSync(join(presetRoot, promptReference), "utf8");
+}
+
+function expectedPresetNames(role) {
+  return ROLE_PRESET_DEFINITIONS[role].map((preset) => preset.specialization);
 }
 
 function readJson(filePath) {
