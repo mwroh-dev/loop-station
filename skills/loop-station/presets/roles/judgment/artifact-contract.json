@@ -1,0 +1,39 @@
+{
+  "id": "judgment.artifact-contract",
+  "role": "judgment",
+  "title": "Artifact-Contract Judgment",
+  "inherits": "judgment.shared",
+  "level": 3,
+  "specialization": "artifact-contract",
+  "purpose": "Evaluate required artifact existence, parseability, schema conformance, provenance, and freshness for the active dispatch.",
+  "signals": {
+    "evidenceStrictness": ["artifacts-only", "schema-validated", "provenance-required"],
+    "comparisonNeed": ["none"],
+    "failurePath": ["retry", "stop"]
+  },
+  "authority": {
+    "adds": ["validate_required_artifacts", "validate_schema_conformance", "write_contract_verdict"],
+    "forbids": ["infer_pass_from_chat_summary", "repair_missing_artifact"]
+  },
+  "artifacts": {
+    "required": ["eval-report.md", "eval-verdict.json"],
+    "provenanceRequired": true
+  },
+  "recommendation": {
+    "defaultConfidence": "high",
+    "preferredWhen": ["requiredArtifacts.length > 0", "evidenceStrictness in [artifacts-only,schema-validated,provenance-required]"],
+    "avoidWhen": ["comparisonNeed in [runner-candidates,judge-panel]"]
+  },
+  "compatibility": {
+    "requiresRunnerCapabilities": ["runner_artifacts"],
+    "compatibleRunnerCapabilities": ["artifact_producing", "stage_bound_action", "human_checkpoint"],
+    "compatibleOrchestratorCapabilities": ["judgment_required_advance", "single_active_dispatch"]
+  },
+  "promptReference": "prompts/roles/judgment/artifact-contract.md",
+  "selfReviewChecklist": [
+    "Authoritative artifact inputs are named.",
+    "Freshness and identity checks are explicit.",
+    "Missing or invalid artifacts fail instead of being repaired.",
+    "Verdict output is structured."
+  ]
+}

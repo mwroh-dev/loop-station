@@ -1,0 +1,39 @@
+{
+  "id": "judgment.comparative",
+  "role": "judgment",
+  "title": "Comparative Judgment",
+  "inherits": "judgment.shared",
+  "level": 3,
+  "specialization": "comparative",
+  "purpose": "Compare multiple runner candidate outputs against the same contract and write a winner, no-pass, or rerun recommendation.",
+  "signals": {
+    "evidenceStrictness": ["artifacts-only", "schema-validated", "provenance-required"],
+    "comparisonNeed": ["runner-candidates", "judge-panel"],
+    "failurePath": ["retry", "stop"]
+  },
+  "authority": {
+    "adds": ["compare_runner_candidates", "rank_contract_fit", "write_comparative_verdict"],
+    "forbids": ["merge_candidate_outputs", "create_winning_artifact"]
+  },
+  "artifacts": {
+    "required": ["eval-report.md", "eval-verdict.json", "comparison-matrix.json"],
+    "provenanceRequired": true
+  },
+  "recommendation": {
+    "defaultConfidence": "medium",
+    "preferredWhen": ["comparisonNeed in [runner-candidates,judge-panel]", "candidateCount > 1"],
+    "avoidWhen": ["candidateCount <= 1", "comparisonNeed == none"]
+  },
+  "compatibility": {
+    "requiresRunnerCapabilities": ["candidate_output_identity", "runner_artifacts"],
+    "compatibleRunnerCapabilities": ["artifact_producing"],
+    "compatibleOrchestratorCapabilities": ["single_active_dispatch", "judgment_required_advance"]
+  },
+  "promptReference": "prompts/roles/judgment/comparative.md",
+  "selfReviewChecklist": [
+    "Every candidate is tied to the same contract.",
+    "The verdict explains winner, no-pass, or rerun recommendation.",
+    "The judge does not merge or fabricate candidate artifacts.",
+    "Candidate provenance and freshness are checked."
+  ]
+}

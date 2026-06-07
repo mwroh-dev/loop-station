@@ -36,6 +36,128 @@ describe("documentation consistency", () => {
     }
   });
 
+  it("keeps role machine preset docs aligned with the skill reference", () => {
+    const publicDoc = read("docs/role-machine-presets.md");
+    const skillRef = read("skills/loop-station/references/role-machine-presets.md");
+    assert.equal(skillRef, publicDoc);
+    for (const heading of [
+      "## Purpose",
+      "## External Reference Model",
+      "## Core Terms",
+      "## Preset Composition Model",
+      "## Machine vs Model Agent",
+      "## Trait Inventory Format",
+      "## Orchestrator",
+      "## Runner",
+      "## Judgment",
+      "## Evidence Identity and Freshness",
+      "## Boundary Matrix",
+      "## Setup Recommendation Signals",
+      "## Preset Authoring Principles"
+    ]) {
+      assert.match(publicDoc, new RegExp(escapeRegExp(heading)));
+      assert.match(skillRef, new RegExp(escapeRegExp(heading)));
+    }
+    for (const requiredText of [
+      "shared trait packs",
+      "future schema hints",
+      "Recommendation output should be a per-role bundle"
+    ]) {
+      assert.match(publicDoc, new RegExp(escapeRegExp(requiredText)));
+      assert.match(skillRef, new RegExp(escapeRegExp(requiredText)));
+    }
+  });
+
+  it("keeps preset recommendation flow docs aligned with the skill reference", () => {
+    const publicDoc = read("docs/preset-recommendation-flow.md");
+    const skillRef = read("skills/loop-station/references/preset-recommendation-flow.md");
+    assert.equal(skillRef, publicDoc);
+    for (const heading of [
+      "## Purpose",
+      "## Inputs",
+      "## Signal Extraction",
+      "## Candidate Generation",
+      "## Recommendation Output",
+      "## User Review Flow",
+      "## Materialization Flow",
+      "## Compatibility Checks",
+      "## Follow-On Work"
+    ]) {
+      assert.match(publicDoc, new RegExp(escapeRegExp(heading)));
+      assert.match(skillRef, new RegExp(escapeRegExp(heading)));
+    }
+    for (const requiredText of [
+      "role-level alternates",
+      "domain overlay only after role presets are selected",
+      "station-local materialized preset files",
+      "Ask for the `Orchestrator` preset first",
+      "Hard failures should be reserved for combinations that violate role authority"
+    ]) {
+      assert.match(publicDoc, new RegExp(escapeRegExp(requiredText)));
+      assert.match(skillRef, new RegExp(escapeRegExp(requiredText)));
+    }
+  });
+
+  it("keeps preset catalog docs aligned with the skill reference", () => {
+    const publicDoc = read("docs/preset-catalog.md");
+    const skillRef = read("skills/loop-station/references/preset-catalog.md");
+    assert.equal(skillRef, publicDoc);
+    for (const heading of [
+      "## Purpose",
+      "## Catalog Layers",
+      "## Proposed Source Layout",
+      "## Shared Trait Pack Shape",
+      "## Role Preset Entry Shape",
+      "## Level Model",
+      "## Scoring Model",
+      "## Recommendation Tie-Breaks",
+      "## Materialized Copy Shape",
+      "## Station-Local Editing Policy",
+      "## Catalog Self-Review Gate",
+      "## Follow-On Work"
+    ]) {
+      assert.match(publicDoc, new RegExp(escapeRegExp(heading)));
+      assert.match(skillRef, new RegExp(escapeRegExp(heading)));
+    }
+    for (const requiredText of [
+      "0-100 value",
+      "Initial built-in presets should target Level 3",
+      "Hard authority violations override score",
+      "The materialized role preset is the editable local copy"
+    ]) {
+      assert.match(publicDoc, new RegExp(escapeRegExp(requiredText)));
+      assert.match(skillRef, new RegExp(escapeRegExp(requiredText)));
+    }
+  });
+
+  it("keeps backlog docs aligned with the skill reference", () => {
+    const publicDoc = read("docs/backlog.md");
+    const skillRef = read("skills/loop-station/references/backlog.md");
+    assert.equal(skillRef, publicDoc);
+    for (const heading of [
+      "## Purpose",
+      "## Decision Rules",
+      "## Priority 1: Interactive Setup UX Hardening",
+      "## Priority 2: Compatibility Risk Reporting",
+      "## Priority 3: Domain Overlays",
+      "## Priority 4: Future Role Machines",
+      "## Priority 5: Scoring Calibration",
+      "## Current Non-Goals"
+    ]) {
+      assert.match(publicDoc, new RegExp(escapeRegExp(heading)));
+      assert.match(skillRef, new RegExp(escapeRegExp(heading)));
+    }
+    for (const requiredText of [
+      "Status: backlog",
+      "not silently force a different preset",
+      "Domain overlays sit above role specialization",
+      "maintaining separate station-local override files"
+    ]) {
+      assert.match(publicDoc, new RegExp(escapeRegExp(requiredText)));
+      assert.match(skillRef, new RegExp(escapeRegExp(requiredText)));
+    }
+  });
+
   it("documents structured Install Mode questions with a plain-text fallback", () => {
     for (const file of [
       "skills/loop-station/SKILL.md",
