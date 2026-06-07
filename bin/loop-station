@@ -178,6 +178,9 @@ async function promptPresetSelections(recommendation, signals) {
     for (const role of ROLE_TYPE_ORDER) {
       const bundle = recommendation[role];
       const candidates = [bundle.selected, ...(bundle.alternates ?? [])].filter(Boolean);
+      if (candidates.length === 0) {
+        throw new Error(`No recommended presets or alternates found for role: ${role}`);
+      }
       output.write(`\n${rolePresetQuestion(role, bundle.selected, signals)}\n`);
       candidates.forEach((candidate, index) => {
         output.write(`${index + 1}. ${candidate.preset.title} (${candidate.preset.id}) - score ${candidate.score}, confidence ${candidate.confidence}\n`);
@@ -544,10 +547,10 @@ function presetRoleCounts(spec) {
 function setupPresetSignals(spec) {
   const hasStages = spec.stageContracts.length > 0;
   const hasHumanCheckpoint = spec.stageContracts.some((stage) => hasStageHumanCheckpoint(stage))
-    || spec.profiles.some((profile) => (profile.humanCheckpoints ?? []).length > 0);
+    || spec.profiles.some((profile) => (profile?.humanCheckpoints ?? []).length > 0);
   const requiredArtifacts = unique([
     ...spec.stageContracts.flatMap((stage) => stage.requiredArtifacts ?? []),
-    ...spec.profiles.flatMap((profile) => profile.requiredEvidence ?? []),
+    ...spec.profiles.flatMap((profile) => profile?.requiredEvidence ?? []),
     "runner-report.md",
     "runner-metadata.json",
     "output-manifest.json",
@@ -558,7 +561,7 @@ function setupPresetSignals(spec) {
     requiredArtifacts.length > 0 ? "artifacts-only" : null,
     spec.stageContracts.some((stage) => Object.keys(stage.artifactSchemas ?? {}).length > 0) ? "schema-validated" : null,
     "provenance-required",
-    spec.profiles.some((profile) => (profile.requiredEvidence ?? []).some((item) => /verification\.json/i.test(item))) ? "verifier-required" : null,
+    spec.profiles.some((profile) => (profile?.requiredEvidence ?? []).some((item) => /verification\.json/i.test(item))) ? "verifier-required" : null,
     hasHumanCheckpoint ? "human-evidence-required" : null
   ].filter(Boolean));
   const workUnitShape = unique([
@@ -583,7 +586,7 @@ function setupPresetSignals(spec) {
   ].filter(Boolean));
   const runtimeBoundary = unique([
     hasHumanCheckpoint ? "human-owned-runtime" : null,
-    spec.profiles.some((profile) => (profile.allowedPublicRuntimeCalls ?? []).length > 0) ? "allowed-runtime-call" : null,
+    spec.profiles.some((profile) => (profile?.allowedPublicRuntimeCalls ?? []).length > 0) ? "allowed-runtime-call" : null,
     "public-skill-only"
   ].filter(Boolean));
   const comparisonNeed = unique([

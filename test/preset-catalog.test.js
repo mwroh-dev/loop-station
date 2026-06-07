@@ -259,6 +259,17 @@ describe("preset recommendation scoring", () => {
     assert.ok(recommendations.runner.alternates.length > 0);
     assert.ok(recommendations.runner.alternates.every((candidate) => candidate.score <= recommendations.runner.selected.score));
   });
+
+  it("reports missing recommended defaults separately from unknown explicit selections", () => {
+    assert.throws(
+      () => applyPresetSelections({ runner: { selected: null, alternates: [] } }),
+      /No recommended preset available for role: runner/
+    );
+    assert.throws(
+      () => applyPresetSelections({ runner: { selected: null, alternates: [] } }, { roles: { runner: "runner.missing" } }),
+      /Unknown runner preset selection: runner\.missing/
+    );
+  });
 });
 
 describe("preset materialization", () => {

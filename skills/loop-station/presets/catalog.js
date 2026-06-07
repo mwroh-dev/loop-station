@@ -50,7 +50,10 @@ export function applyPresetSelections(recommendation, selections = {}) {
       ? candidates.find((candidate) => candidate.preset.id === requested || candidate.preset.specialization === requested)
       : bundle.selected;
     if (!selected) {
-      throw new Error(`Unknown ${role} preset selection: ${requested}`);
+      if (requested) {
+        throw new Error(`Unknown ${role} preset selection: ${requested}`);
+      }
+      throw new Error(`No recommended preset available for role: ${role}`);
     }
     next[role] = {
       ...bundle,
@@ -339,27 +342,6 @@ function sentenceList(values = []) {
   return `${values.slice(0, -1).join(", ")} and ${values.at(-1)}`;
 }
 
-function flattenSignalValues(source) {
-  const values = [];
-  for (const [key, value] of Object.entries(source ?? {})) {
-    if (ignoredSignalKey(key)) continue;
-    if (Array.isArray(value)) values.push(...value);
-    else if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") values.push(String(value));
-  }
-  return values;
-}
-
-function ignoredSignalKey(key) {
-  return [
-    "blockedPresetIds",
-    "blockedResponsibilities",
-    "discouragedResponsibilities",
-    "peerCapabilities",
-    "requiredArtifacts",
-    "normalizedSignals"
-  ].includes(key);
-}
-
 function ratioScore(matches, total, max) {
   if (total <= 0) return 0;
   return Math.round((matches / total) * max);
@@ -373,10 +355,6 @@ function zeroDimensions() {
     compatibility: 0,
     maturityLevel: 0
   };
-}
-
-function unique(values) {
-  return [...new Set(values)];
 }
 
 function readJson(filePath) {
