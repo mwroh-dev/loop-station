@@ -51,33 +51,7 @@ describe("documentation consistency", () => {
   });
 
   it("keeps preset recommendation flow docs aligned with the skill reference", () => {
-    const publicDoc = read("docs/preset-recommendation-flow.md");
-    const skillRef = read("skills/loop-station/references/preset-recommendation-flow.md");
-    assert.equal(skillRef, publicDoc);
-    for (const heading of [
-      "## Purpose",
-      "## Inputs",
-      "## Signal Extraction",
-      "## Candidate Generation",
-      "## Recommendation Output",
-      "## User Review Flow",
-      "## Materialization Flow",
-      "## Compatibility Checks",
-      "## Follow-On Work"
-    ]) {
-      assert.match(publicDoc, new RegExp(escapeRegExp(heading)));
-      assert.match(skillRef, new RegExp(escapeRegExp(heading)));
-    }
-    for (const requiredText of [
-      "role-level alternates",
-      "domain overlay only after role presets are selected",
-      "station-local materialized preset files",
-      "Ask for the `Orchestrator` preset first",
-      "Hard failures should be reserved for combinations that violate role authority"
-    ]) {
-      assert.match(publicDoc, new RegExp(escapeRegExp(requiredText)));
-      assert.match(skillRef, new RegExp(escapeRegExp(requiredText)));
-    }
+    assertMirrored("preset-recommendation-flow.md");
   });
 
   it("keeps preset catalog docs aligned with the skill reference", () => {
@@ -94,31 +68,7 @@ describe("documentation consistency", () => {
   });
 
   it("keeps backlog docs aligned with the skill reference", () => {
-    const publicDoc = read("docs/backlog.md");
-    const skillRef = read("skills/loop-station/references/backlog.md");
-    assert.equal(skillRef, publicDoc);
-    for (const heading of [
-      "## Purpose",
-      "## Decision Rules",
-      "## Priority 1: Interactive Setup UX Hardening",
-      "## Priority 2: Compatibility Risk Reporting",
-      "## Priority 3: Domain Overlays",
-      "## Priority 4: Future Role Machines",
-      "## Priority 5: Scoring Calibration",
-      "## Current Non-Goals"
-    ]) {
-      assert.match(publicDoc, new RegExp(escapeRegExp(heading)));
-      assert.match(skillRef, new RegExp(escapeRegExp(heading)));
-    }
-    for (const requiredText of [
-      "Status: backlog",
-      "not silently force a different preset",
-      "Domain overlays sit above role specialization",
-      "maintaining separate station-local override files"
-    ]) {
-      assert.match(publicDoc, new RegExp(escapeRegExp(requiredText)));
-      assert.match(skillRef, new RegExp(escapeRegExp(requiredText)));
-    }
+    assertMirrored("backlog.md");
   });
 
   it("documents structured Install Mode questions with a plain-text fallback", () => {
