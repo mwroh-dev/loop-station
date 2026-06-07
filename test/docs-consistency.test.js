@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
@@ -37,34 +37,16 @@ describe("documentation consistency", () => {
   });
 
   it("keeps role machine preset docs aligned with the skill reference", () => {
-    const publicDoc = read("docs/role-machine-presets.md");
-    const skillRef = read("skills/loop-station/references/role-machine-presets.md");
-    assert.equal(skillRef, publicDoc);
-    for (const heading of [
-      "## Purpose",
-      "## External Reference Model",
-      "## Core Terms",
-      "## Preset Composition Model",
-      "## Machine vs Model Agent",
-      "## Trait Inventory Format",
-      "## Orchestrator",
-      "## Runner",
-      "## Judgment",
-      "## Evidence Identity and Freshness",
-      "## Boundary Matrix",
-      "## Setup Recommendation Signals",
-      "## Preset Authoring Principles"
+    assertMirrored("role-machine-presets.md");
+    for (const path of [
+      "role-machine-presets/concepts.md",
+      "role-machine-presets/orchestrator.md",
+      "role-machine-presets/runner.md",
+      "role-machine-presets/judgment.md",
+      "role-machine-presets/boundaries.md"
     ]) {
-      assert.match(publicDoc, new RegExp(escapeRegExp(heading)));
-      assert.match(skillRef, new RegExp(escapeRegExp(heading)));
-    }
-    for (const requiredText of [
-      "shared trait packs",
-      "future schema hints",
-      "Recommendation output should be a per-role bundle"
-    ]) {
-      assert.match(publicDoc, new RegExp(escapeRegExp(requiredText)));
-      assert.match(skillRef, new RegExp(escapeRegExp(requiredText)));
+      assertMirrored(path);
+      assertReferenceLinked("docs/role-machine-presets.md", path);
     }
   });
 
@@ -99,34 +81,15 @@ describe("documentation consistency", () => {
   });
 
   it("keeps preset catalog docs aligned with the skill reference", () => {
-    const publicDoc = read("docs/preset-catalog.md");
-    const skillRef = read("skills/loop-station/references/preset-catalog.md");
-    assert.equal(skillRef, publicDoc);
-    for (const heading of [
-      "## Purpose",
-      "## Catalog Layers",
-      "## Proposed Source Layout",
-      "## Shared Trait Pack Shape",
-      "## Role Preset Entry Shape",
-      "## Level Model",
-      "## Scoring Model",
-      "## Recommendation Tie-Breaks",
-      "## Materialized Copy Shape",
-      "## Station-Local Editing Policy",
-      "## Catalog Self-Review Gate",
-      "## Follow-On Work"
+    assertMirrored("preset-catalog.md");
+    for (const path of [
+      "preset-catalog/source-layout.md",
+      "preset-catalog/scoring.md",
+      "preset-catalog/materialization.md",
+      "preset-catalog/authoring.md"
     ]) {
-      assert.match(publicDoc, new RegExp(escapeRegExp(heading)));
-      assert.match(skillRef, new RegExp(escapeRegExp(heading)));
-    }
-    for (const requiredText of [
-      "0-100 value",
-      "Initial built-in presets should target Level 3",
-      "Hard authority violations override score",
-      "The materialized role preset is the editable local copy"
-    ]) {
-      assert.match(publicDoc, new RegExp(escapeRegExp(requiredText)));
-      assert.match(skillRef, new RegExp(escapeRegExp(requiredText)));
+      assertMirrored(path);
+      assertReferenceLinked("docs/preset-catalog.md", path);
     }
   });
 
@@ -223,6 +186,20 @@ describe("documentation consistency", () => {
 
 function read(path) {
   return readFileSync(join(root, path), "utf8");
+}
+
+function assertMirrored(path) {
+  assertFileExists(`docs/${path}`);
+  assertFileExists(`skills/loop-station/references/${path}`);
+  assert.equal(read(`skills/loop-station/references/${path}`), read(`docs/${path}`), path);
+}
+
+function assertReferenceLinked(indexPath, referencedPath) {
+  assert.match(read(indexPath), new RegExp(escapeRegExp(referencedPath)), `${indexPath} should link ${referencedPath}`);
+}
+
+function assertFileExists(path) {
+  assert.equal(existsSync(join(root, path)), true, `${path} should exist`);
 }
 
 function escapeRegExp(text) {
