@@ -1,0 +1,73 @@
+{
+  "id": "orchestrator.shared",
+  "role": "orchestrator",
+  "title": "Shared Orchestrator Traits",
+  "level": 3,
+  "purpose": "Own station state transitions, dispatch gates, pause/rerun decisions, and handoff boundaries without performing model-owned work.",
+  "authority": [
+    "track_active_run_case_stage_attempt_message",
+    "dispatch_bounded_task_envelopes",
+    "gate_progress_on_activation_artifacts_verifier_and_judgment",
+    "apply_retry_rerun_pause_handoff_policy",
+    "write_station_events_and_station_owned_failures"
+  ],
+  "forbiddenResponsibilities": [
+    "runner_task_execution",
+    "runner_artifact_fabrication",
+    "judgment_verdict_fabrication",
+    "provider_source_patch",
+    "case_input_patch",
+    "consumer_generated_artifact_patch",
+    "raw_control_json_exposure_without_debug_mode"
+  ],
+  "requiredEvidence": [
+    "activeRunId",
+    "caseId",
+    "stageId",
+    "attempt",
+    "messageId",
+    "mailboxStarted",
+    "mailboxReply",
+    "requiredArtifacts",
+    "judgmentVerdict"
+  ],
+  "lifecycleDefaults": [
+    "run-scoped"
+  ],
+  "recommendationSignals": {
+    "transitionStyle": [
+      "strict-sequential",
+      "recovery",
+      "human-gated",
+      "multi-stage"
+    ],
+    "failurePath": [
+      "stop",
+      "retry",
+      "recycle-pane",
+      "provider-handoff",
+      "deploy-verify",
+      "human-pause"
+    ]
+  },
+  "scoringHints": {
+    "authorityFitMinimum": 20,
+    "evidenceFitRequires": [
+      "activation evidence",
+      "artifact evidence",
+      "judgment evidence"
+    ],
+    "hardRejects": [
+      "fabricates model artifacts",
+      "advances from pane text only",
+      "patches provider or case files"
+    ]
+  },
+  "selfReviewChecklist": [
+    "Defines the evidence that opens and closes active task slots.",
+    "Keeps model task execution outside orchestrator authority.",
+    "Keeps raw station control JSON out of model-visible prompts by default.",
+    "Defines what failure evidence leads to pause, rerun, handoff, or stop.",
+    "Preserves deterministic station behavior as distinct from model guidance."
+  ]
+}

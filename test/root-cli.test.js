@@ -323,6 +323,62 @@ describe("loop-station root CLI", () => {
     assert.equal(config.targetSkills[0].name, "$entity-extractor");
     assert.equal(config.stageContracts[0].skill, "$entity-extractor");
     assert.ok(config.stageContracts[0].artifactSchemas["entities.json"]);
+    const recommendation = JSON.parse(readFileSync(join(project, ".loop-station", "presets", "recommendation.json"), "utf8"));
+    const orchestratorPreset = JSON.parse(readFileSync(join(project, ".loop-station", "presets", "roles", "orchestrator.json"), "utf8"));
+    const runnerPreset = JSON.parse(readFileSync(join(project, ".loop-station", "presets", "roles", "runner.json"), "utf8"));
+    const judgmentPreset = JSON.parse(readFileSync(join(project, ".loop-station", "presets", "roles", "judgment.json"), "utf8"));
+    assert.equal(recommendation.recommendationId, "setup-default");
+    assert.equal(recommendation.roles.orchestrator.sourcePresetId, "orchestrator.multi-stage");
+    assert.equal(recommendation.roles.runner.sourcePresetId, "runner.stage-bound-action");
+    assert.equal(recommendation.roles.judgment.sourcePresetId, "judgment.artifact-contract");
+    assert.equal(recommendation.decisionFlow.length, 3);
+    assert.match(recommendation.decisionFlow[0].reason, /orchestrator/i);
+    assert.equal(orchestratorPreset.resolvedSharedTraits.id, "orchestrator.shared");
+    assert.equal(runnerPreset.resolvedSpecialization.specialization, "stage-bound-action");
+    assert.equal(judgmentPreset.selectedBecause.confidence, "high");
+    assert.equal(runnerPreset.stationLocalEditing.editableAfterSetup, true);
+    assert.equal(existsSync(join(project, ".loop-station", "preset-overrides")), false);
+
+    rmSync(project, { recursive: true, force: true });
+  });
+
+  it("setup applies explicit role preset selections from the setup spec", () => {
+    const project = mkdtempSync(join(tmpdir(), "loop-station-setup-selected-preset-"));
+    const skillInstall = spawnSync(process.execPath, [bin, "install-skill", "--project", project], {
+      cwd: root,
+      encoding: "utf8"
+    });
+    assert.equal(skillInstall.status, 0, skillInstall.stderr || skillInstall.stdout);
+    const specPath = join(project, "setup-spec.json");
+    writeFileSync(specPath, `${JSON.stringify({
+      loopType: "action-pipeline",
+      stageContracts: [
+        {
+          id: "extract-entities",
+          skill: "$entity-extractor",
+          requiredArtifacts: ["runner-report.md", "runner-metadata.json", "output-manifest.json", "entities.json"]
+        }
+      ],
+      presetSelections: {
+        roles: {
+          orchestrator: "strict-sequential",
+          runner: "artifact-producing",
+          judgment: "process-evidence"
+        }
+      }
+    }, null, 2)}\n`);
+
+    const result = spawnSync(process.execPath, [bin, "setup", "--project", project, "--spec", specPath], {
+      cwd: root,
+      encoding: "utf8"
+    });
+
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const recommendation = JSON.parse(readFileSync(join(project, ".loop-station", "presets", "recommendation.json"), "utf8"));
+    assert.equal(recommendation.roles.orchestrator.sourcePresetId, "orchestrator.strict-sequential");
+    assert.equal(recommendation.roles.runner.sourcePresetId, "runner.artifact-producing");
+    assert.equal(recommendation.roles.judgment.sourcePresetId, "judgment.process-evidence");
+    assert.equal(recommendation.decisionFlow.every((decision) => decision.decision.mode === "explicit-selection"), true);
 
     rmSync(project, { recursive: true, force: true });
   });

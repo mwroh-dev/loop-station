@@ -1,0 +1,75 @@
+{
+  "id": "orchestrator.human-gated",
+  "role": "orchestrator",
+  "title": "Human-Gated Orchestrator",
+  "inherits": "orchestrator.shared",
+  "level": 3,
+  "specialization": "human-gated",
+  "purpose": "Pause at human-owned checkpoints and resume only after explicit checkpoint evidence belongs to the active dispatch.",
+  "signals": {
+    "transitionStyle": [
+      "human-gated",
+      "strict-sequential"
+    ],
+    "failurePath": [
+      "human-pause",
+      "retry",
+      "stop"
+    ],
+    "workUnitShape": [
+      "human-checkpoint",
+      "ordered-stage"
+    ]
+  },
+  "authority": {
+    "adds": [
+      "human_checkpoint_pause",
+      "checkpoint_evidence_gate",
+      "resume_after_human_evidence"
+    ],
+    "forbids": [
+      "auto_complete_human_checkpoint",
+      "advance_without_checkpoint_evidence"
+    ]
+  },
+  "artifacts": {
+    "required": [
+      "dispatch-request.json",
+      "checkpoint-request.json",
+      "checkpoint-evidence.json",
+      "eval-verdict.json"
+    ],
+    "provenanceRequired": true
+  },
+  "recommendation": {
+    "defaultConfidence": "high",
+    "preferredWhen": [
+      "workUnitShape == human-checkpoint",
+      "evidenceStrictness == human-evidence-required"
+    ],
+    "avoidWhen": [
+      "runtimeBoundary == station-owned-runtime",
+      "workUnitShape == parallel-candidate"
+    ]
+  },
+  "compatibility": {
+    "requiresRunnerCapabilities": [
+      "human_checkpoint_stop",
+      "checkpoint_evidence_recording"
+    ],
+    "compatibleRunnerCapabilities": [
+      "human_checkpoint"
+    ],
+    "compatibleJudgmentCapabilities": [
+      "artifact_contract",
+      "process_evidence"
+    ]
+  },
+  "promptReference": "prompts/roles/orchestrator/human-gated.md",
+  "selfReviewChecklist": [
+    "Human-owned actions remain human-owned.",
+    "Resume requires checkpoint evidence for the active run, case, stage, and message.",
+    "Automation cannot replace the checkpoint.",
+    "Ambiguous checkpoint evidence pauses instead of advancing."
+  ]
+}

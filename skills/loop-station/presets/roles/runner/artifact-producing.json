@@ -1,0 +1,74 @@
+{
+  "id": "runner.artifact-producing",
+  "role": "runner",
+  "title": "Artifact-Producing Runner",
+  "inherits": "runner.shared",
+  "level": 3,
+  "specialization": "artifact-producing",
+  "purpose": "Execute the assigned case or attempt and produce the required runner artifacts with provenance.",
+  "signals": {
+    "workUnitShape": [
+      "single-case",
+      "repeated-case"
+    ],
+    "runtimeBoundary": [
+      "public-skill-only",
+      "allowed-runtime-call"
+    ],
+    "mutationBoundary": [
+      "consumer-output",
+      "no-mutation"
+    ]
+  },
+  "authority": {
+    "adds": [
+      "execute_one_case_attempt",
+      "write_required_output_manifest",
+      "report_blocked_or_unsupported"
+    ],
+    "forbids": [
+      "final_verdict_claim",
+      "unassigned_stage_execution"
+    ]
+  },
+  "artifacts": {
+    "required": [
+      "runner-report.md",
+      "runner-metadata.json",
+      "output-manifest.json"
+    ],
+    "provenanceRequired": true
+  },
+  "recommendation": {
+    "defaultConfidence": "high",
+    "preferredWhen": [
+      "workUnitShape in [single-case,repeated-case]",
+      "stageContracts.length == 0"
+    ],
+    "avoidWhen": [
+      "workUnitShape == human-checkpoint",
+      "workUnitShape == ordered-stage"
+    ]
+  },
+  "compatibility": {
+    "requiresOrchestratorCapabilities": [
+      "single_active_dispatch",
+      "judgment_required_advance"
+    ],
+    "compatibleOrchestratorCapabilities": [
+      "single_active_dispatch",
+      "deterministic_retry_limit"
+    ],
+    "compatibleJudgmentCapabilities": [
+      "artifact_contract",
+      "process_evidence"
+    ]
+  },
+  "promptReference": "prompts/roles/runner/artifact-producing.md",
+  "selfReviewChecklist": [
+    "The assigned case or attempt is the only work unit.",
+    "The configured public skill or allowed runtime boundary is named.",
+    "Required artifacts include provenance.",
+    "Blocked or unsupported work is reported through artifacts."
+  ]
+}

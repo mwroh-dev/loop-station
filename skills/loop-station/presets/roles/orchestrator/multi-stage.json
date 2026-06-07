@@ -1,0 +1,74 @@
+{
+  "id": "orchestrator.multi-stage",
+  "role": "orchestrator",
+  "title": "Multi-Stage Orchestrator",
+  "inherits": "orchestrator.shared",
+  "level": 3,
+  "specialization": "multi-stage",
+  "purpose": "Dispatch ordered stage contracts one at a time and prevent a runner from continuing into unassigned stages.",
+  "signals": {
+    "transitionStyle": [
+      "multi-stage",
+      "strict-sequential"
+    ],
+    "failurePath": [
+      "retry",
+      "stop"
+    ],
+    "workUnitShape": [
+      "ordered-stage"
+    ]
+  },
+  "authority": {
+    "adds": [
+      "stage_order_gate",
+      "single_active_stage",
+      "stage_contract_dispatch"
+    ],
+    "forbids": [
+      "skip_stage_gate",
+      "runner_continues_unassigned_stage"
+    ]
+  },
+  "artifacts": {
+    "required": [
+      "stage-contract.json",
+      "dispatch-request.json",
+      "runner-metadata.json",
+      "eval-verdict.json"
+    ],
+    "provenanceRequired": true
+  },
+  "recommendation": {
+    "defaultConfidence": "medium",
+    "preferredWhen": [
+      "stageContracts.length > 0",
+      "workUnitShape == ordered-stage"
+    ],
+    "avoidWhen": [
+      "workUnitShape == single-case",
+      "transitionStyle == human-gated"
+    ]
+  },
+  "compatibility": {
+    "requiresRunnerCapabilities": [
+      "execute_one_stage",
+      "stop_after_assigned_stage"
+    ],
+    "compatibleRunnerCapabilities": [
+      "stage_bound_action",
+      "human_checkpoint"
+    ],
+    "compatibleJudgmentCapabilities": [
+      "artifact_contract",
+      "process_evidence"
+    ]
+  },
+  "promptReference": "prompts/roles/orchestrator/multi-stage.md",
+  "selfReviewChecklist": [
+    "Stage order is explicit and deterministic.",
+    "The runner sees only the assigned stage boundary.",
+    "Stage completion requires current artifacts and judgment.",
+    "A later stage is never dispatched before the previous gate closes."
+  ]
+}
