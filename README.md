@@ -44,8 +44,18 @@ When Codex cannot provide a real tmux client context, Loop Station launches the 
 
 Verification is split deliberately:
 
-- `npm test` covers deterministic runtime and contract behavior only.
-- Live tmux/Codex runs are operator-driven local checks and may depend on current Codex CLI behavior, model latency, and pane readiness.
+- `npm run verify:ci` is the GitHub Actions-safe check. It runs headless-safe `*.test.js` tests plus template validation with runtime tool checks skipped.
+- `npm run verify:full` is the local/pre-push check. It runs `npm test`, including `*.integration.js` tests, plus full template validation with runtime tool checks enabled.
+- `npm test` is the full local test suite. Integration tests that require live tmux panes, Terminal.app cleanup, station `boot`/`run-next` orchestration, or runtime tool availability use the `*.integration.js` suffix.
+- Live Codex model runs remain operator-driven local checks and may depend on current Codex CLI behavior, model latency, and pane readiness.
+
+To install the optional repo-local pre-push hook:
+
+```bash
+npm run hooks:install
+```
+
+The hook runs `npm run verify:full` before push.
 
 ## Runtime Requirements
 

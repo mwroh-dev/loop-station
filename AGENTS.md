@@ -11,8 +11,10 @@
 
 ## Verification
 
-- Run `npm test` after changing JavaScript, harness behavior, examples, or skill instructions.
-- Run `npm run validate:template` after changing harness template configuration or validation behavior.
+- `npm run verify:ci` is the GitHub Actions-safe check. It runs headless-safe `*.test.js` files and template validation with runtime tool checks skipped.
+- `npm run verify:full` is the local/pre-push check. It runs the full suite, including `*.integration.js` tests, and full template validation with runtime tool checks.
+- Run `npm run verify:full` before pushing changes to JavaScript, harness behavior, examples, skill instructions, template configuration, or validation behavior.
+- Keep tests that require live tmux panes, Terminal.app cleanup, station `boot`/`run-next` orchestration, or runtime tool availability in `*.integration.js`, not `*.test.js`.
 
 ## Safety Boundaries
 
