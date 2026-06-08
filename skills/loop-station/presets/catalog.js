@@ -45,10 +45,10 @@ export function applyPresetSelections(recommendation, selections = {}) {
   const next = {};
   for (const [role, bundle] of Object.entries(recommendation ?? {})) {
     const requested = selections.roles?.[role] ?? selections[role] ?? null;
-    const candidates = [bundle.selected, ...(bundle.alternates ?? [])].filter(Boolean);
+    const candidates = [bundle?.selected, ...(bundle?.alternates ?? [])].filter(Boolean);
     const selected = requested
-      ? candidates.find((candidate) => candidate.preset.id === requested || candidate.preset.specialization === requested)
-      : bundle.selected;
+      ? candidates.find((candidate) => candidate.preset?.id === requested || candidate.preset?.specialization === requested)
+      : bundle?.selected;
     if (!selected) {
       if (requested) {
         throw new Error(`Unknown ${role} preset selection: ${requested}`);

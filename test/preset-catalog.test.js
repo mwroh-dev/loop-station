@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
+import { fileURLToPath } from "node:url";
 import {
   applyPresetSelections,
   loadPresetCatalog,
@@ -12,7 +13,7 @@ import {
 } from "../skills/loop-station/presets/catalog.js";
 import { ROLE_PRESET_DEFINITIONS, ROLE_PRESET_PROMPTS, ROLE_TYPE_ORDER, SHARED_TRAIT_PACKS } from "../skills/loop-station/presets/definitions.js";
 
-const root = new URL("..", import.meta.url).pathname;
+const root = fileURLToPath(new URL("..", import.meta.url));
 const presetRoot = join(root, "skills", "loop-station", "presets");
 const sharedRoot = join(presetRoot, "shared");
 const roleRoot = join(presetRoot, "roles");
@@ -263,6 +264,10 @@ describe("preset recommendation scoring", () => {
   it("reports missing recommended defaults separately from unknown explicit selections", () => {
     assert.throws(
       () => applyPresetSelections({ runner: { selected: null, alternates: [] } }),
+      /No recommended preset available for role: runner/
+    );
+    assert.throws(
+      () => applyPresetSelections({ runner: null }),
       /No recommended preset available for role: runner/
     );
     assert.throws(

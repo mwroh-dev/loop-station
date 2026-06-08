@@ -58,9 +58,10 @@ async function setup(args) {
   scaffoldSetupStageSkills(project, seeded);
   const presetCatalog = loadPresetCatalog();
   const presetSignals = setupPresetSignals(seeded);
+  const recommendedPresets = recommendRolePresets(presetSignals, presetCatalog);
   const presetRecommendation = specPath
-    ? applyPresetSelections(recommendRolePresets(presetSignals, presetCatalog), seeded.presetSelections)
-    : await promptPresetSelections(recommendRolePresets(presetSignals, presetCatalog), presetSignals);
+    ? applyPresetSelections(recommendedPresets, seeded.presetSelections)
+    : await promptPresetSelections(recommendedPresets, presetSignals);
 
   if (replace && existsSync(stationRoot)) {
     rmSync(stationRoot, { recursive: true, force: true });
@@ -628,9 +629,9 @@ function setupPeerCapabilities({ hasStages, hasHumanCheckpoint, comparisonNeed }
 }
 
 function hasStageHumanCheckpoint(stage) {
-  return (stage.phaseContracts ?? []).some((phase) => phase.allowedActor === "human_user" || phase.checkpoint)
-    || (stage.humanCheckpoints ?? []).length > 0
-    || (stage.requiredEvidence ?? []).some((item) => /human|checkpoint/i.test(item));
+  return (stage?.phaseContracts ?? []).some((phase) => phase?.allowedActor === "human_user" || phase?.checkpoint)
+    || (stage?.humanCheckpoints ?? []).length > 0
+    || (stage?.requiredEvidence ?? []).some((item) => /human|checkpoint/i.test(item));
 }
 
 function normalizePresetSelections(selections) {
