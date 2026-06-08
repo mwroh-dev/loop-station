@@ -513,6 +513,9 @@ describe("loop-station root CLI", () => {
 
     assert.equal(result.status, 0, result.stderr || result.stdout);
     assert.match(result.stdout, /Role preset recommendation preview/);
+    assert.match(result.stdout, /Preview only/);
+    assert.match(result.stdout, /not user approval/i);
+    assert.match(result.stdout, /before running loop-station setup/i);
     assert.match(result.stdout, /Orchestrator preset/);
     assert.match(result.stdout, /Recommended: Multi-Stage Orchestrator \(orchestrator\.multi-stage\)/);
     assert.match(result.stdout, /Runner preset/);

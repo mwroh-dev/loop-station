@@ -210,7 +210,8 @@ async function promptPresetSelections(recommendation, signals) {
 
 function printPresetRecommendationPreview({ recommendation, signals }) {
   console.log("\nRole preset recommendation preview:");
-  console.log("This preview does not create or modify .loop-station. Run loop-station setup after approving the setup proposal.");
+  console.log("Preview only: this is not user approval, not final setup, and not station materialization.");
+  console.log("Do not create or modify .loop-station from this preview alone. Ask the user to approve the role preset decisions before running loop-station setup.");
   for (const role of ROLE_TYPE_ORDER) {
     console.log("");
     console.log(formatRolePresetRecommendation({ role, bundle: recommendation[role], signals, includeQuestion: false }));

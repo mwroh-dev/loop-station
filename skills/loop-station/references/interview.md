@@ -23,6 +23,14 @@ loop-station interview --project <consumerRoot> --spec <setup-spec.json>
 
 For Codex structured UI, ask the preset decisions in this order: `Orchestrator`, `Runner`, then `Judgment`. Use the recommendation reason as the question text, put the recommended preset first, and include up to two alternates.
 
+Do not treat the preview as approval. The preview is only evidence for the next user decision. Before running `loop-station setup`, confirm that the user accepted or changed each role preset decision.
+
+Do not collapse role preset decisions into one bundle acceptance. Ask `Orchestrator` first, then `Runner`, then `Judgment`, because later role choices depend on the authority boundary established by earlier choices.
+
+Do not present preset names without the recommendation reason. The user must see why the current setup signals point to the recommended preset and what alternates exist.
+
+Before trusting the recommendation, check whether the setup spec omits facts that materially affect role choice, especially human checkpoints, ordered stages, required artifacts, verifier evidence, runtime boundaries, and mutation boundaries. If those facts are unresolved, ask for them before treating the recommendation as ready.
+
 ## Required Decisions
 
 ### 1. Station Purpose
