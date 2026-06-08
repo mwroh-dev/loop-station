@@ -1,12 +1,15 @@
 # Preset Catalog Source Layout
 
-## Generated Layout
+## Source Layout
 
 ```text
 skills/loop-station/presets/
   definitions.js
   generate.js
   catalog.js
+  prompts/
+    PRESET_PROMPT_TEMPLATE.md
+    roles/**/*.md
   shared/
     orchestrator.json
     runner.json
@@ -15,10 +18,11 @@ skills/loop-station/presets/
     orchestrator/*.json
     runner/*.json
     judgment/*.json
-  prompts/roles/**/*.md
 ```
 
-`definitions.js` is the source of truth. `generate.js` produces the JSON and prompt artifacts that setup consumes and packages. The generated files stay committed so installed skills can read plain catalog artifacts without evaluating extra generation steps.
+`definitions.js` is the source of truth for catalog metadata, recommendation signals, compatibility metadata, and generated JSON artifacts. `generate.js` produces only the JSON artifacts that setup consumes and packages. The generated JSON files stay committed so installed skills can read plain catalog artifacts without evaluating extra generation steps.
+
+Prompt markdown is not generated from JavaScript. The files under `prompts/roles/**/*.md` are authored model-facing guidance referenced by `promptReference`. Use `prompts/PRESET_PROMPT_TEMPLATE.md` when adding or revising a preset prompt.
 
 ## Shared Trait Pack Shape
 

@@ -15,6 +15,6 @@ This entry file is intentionally small. Use the focused references below for imp
 
 ## Catalog Summary
 
-Catalog layers compose as shared trait packs, role preset entries, optional domain overlays, and materialized station copies. Built-in source definitions live in `skills/loop-station/presets/definitions.js`. Generated JSON and prompt files live under `skills/loop-station/presets/shared`, `skills/loop-station/presets/roles`, and `skills/loop-station/presets/prompts`.
+Catalog layers compose as shared trait packs, role preset entries, model-facing prompt guidance, optional domain overlays, and materialized station copies. Built-in catalog metadata lives in `skills/loop-station/presets/definitions.js`. Generated JSON lives under `skills/loop-station/presets/shared` and `skills/loop-station/presets/roles`. Prompt guidance lives as authored markdown under `skills/loop-station/presets/prompts`.
 
 Selected presets are copied into `.loop-station` during setup. Station-local edits belong in the materialized preset copy so the final role definition has one local source of truth.

@@ -2,9 +2,13 @@
 
 ## Source Of Truth
 
-Preset authors edit `skills/loop-station/presets/definitions.js`. They do not hand-edit generated JSON or generated prompt files. Run `npm run generate:presets` after source changes.
+Preset authors edit `skills/loop-station/presets/definitions.js` for catalog metadata and generated JSON. They edit `skills/loop-station/presets/prompts/roles/**/*.md` for model-facing role guidance. Run `npm run generate:presets` after metadata source changes.
 
-Generated artifacts remain in the repository because they are the runtime packaging surface. Tests compare generated artifacts to source definitions so drift is caught before publishing.
+Generated JSON artifacts remain in the repository because they are the runtime packaging surface. Tests compare generated JSON to source definitions so drift is caught before publishing. Prompt validation stays shallow: each preset must reference an existing markdown prompt, but tests do not assert detailed heading text or role logic.
+
+## Prompt Template
+
+Use `skills/loop-station/presets/prompts/PRESET_PROMPT_TEMPLATE.md` when creating or revising prompt guidance. The template is a checklist for the authoring model or human author, not a JavaScript schema.
 
 ## Catalog Self-Review Gate
 

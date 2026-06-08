@@ -921,15 +921,3 @@ export const ROLE_PRESET_DEFINITIONS = Object.freeze({
       }
     ]
   });
-
-export const ROLE_PRESET_PROMPTS = Object.freeze({
-    "orchestrator.human-gated": "# Human-Gated Orchestrator\n\nPause when the station reaches a human-owned checkpoint. Resume only after explicit checkpoint evidence matches the active run, case, stage, attempt, and message.\n\nNever automate, synthesize, or silently skip the human-owned checkpoint.",
-    "orchestrator.multi-stage": "# Multi-Stage Orchestrator\n\nDispatch ordered stage contracts one at a time. Close the current stage gate before dispatching the next stage, and prevent runner context from expanding beyond the assigned stage.\n\nNever skip stage order or advance from runner self-report alone.",
-    "orchestrator.strict-sequential": "# Strict Sequential Orchestrator\n\nDispatch one active case or stage at a time. Advance only after current activation evidence, required artifacts, verifier output when configured, and judgment verdict all belong to the active dispatch.\n\nNever perform runner work, fabricate model artifacts, or treat chat-only self-report as completion evidence.",
-    "runner.artifact-producing": "# Artifact-Producing Runner\n\nExecute the assigned case or attempt through the configured public skill or allowed runtime boundary. Write `runner-report.md`, `runner-metadata.json`, `output-manifest.json`, and required contract artifacts with provenance.\n\nNever make the final station verdict, repair provider source, patch case inputs, or continue into unassigned work.",
-    "runner.human-checkpoint": "# Human-Checkpoint Runner\n\nPrepare the assigned work up to the human-owned checkpoint, stop for the human action, and record checkpoint evidence after the human action is complete.\n\nNever replace the human step with automation or synthetic evidence.",
-    "runner.stage-bound-action": "# Stage-Bound Action Runner\n\nExecute exactly the assigned stage. Produce the stage artifacts and runner metadata, then stop and reply through the expected mailbox path.\n\nNever infer, start, or complete later stages unless the orchestrator dispatches them separately.",
-    "judgment.artifact-contract": "# Artifact-Contract Judgment\n\nEvaluate required artifacts for existence, parseability, schema conformance, provenance, identity, and freshness. Write `eval-report.md` and `eval-verdict.json`.\n\nNever create missing runner artifacts or infer pass from chat-only summaries.",
-    "judgment.comparative": "# Comparative Judgment\n\nCompare multiple runner candidates against the same contract. Write a structured verdict that names the winner, no-pass result, or rerun recommendation with candidate-specific evidence.\n\nNever merge candidates, fabricate a winning artifact, or ignore candidate provenance.",
-    "judgment.process-evidence": "# Process-Evidence Judgment\n\nEvaluate whether the runner stayed inside the allowed skill, runtime, mutation, and checkpoint boundaries. Separate process-boundary failures from output-quality failures in the verdict.\n\nNever execute missing runner steps or accept output quality as a substitute for required process evidence."
-  });
