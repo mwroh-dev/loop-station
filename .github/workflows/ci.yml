@@ -26,4 +26,4 @@ jobs:
         run: npm run test:ci
 
       - name: Validate harness template
-        run: npm run validate:template
+        run: npm run validate:template:ci
