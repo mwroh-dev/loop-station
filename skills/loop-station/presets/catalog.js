@@ -177,7 +177,7 @@ export function analyzePresetRecommendationCompatibility({ recommendation, signa
       const peerRole = compatibilityPeerRole(key);
       const available = new Set([
         ...signalCapabilities,
-        ...(peerRole ? selectedCapabilities[peerRole] ?? [] : [])
+        ...(peerRole ? Array.from(selectedCapabilities[peerRole] ?? []) : [])
       ]);
       const missing = values.filter((value) => !available.has(value));
       if (missing.length > 0) {
@@ -445,7 +445,7 @@ function setupContextSentence(signals) {
 function sentenceList(values = []) {
   if (!Array.isArray(values) || values.length === 0) return "";
   if (values.length === 1) return values[0];
-  return `${values.slice(0, -1).join(", ")} and ${values.at(-1)}`;
+  return `${values.slice(0, -1).join(", ")} and ${values[values.length - 1]}`;
 }
 
 function ratioScore(matches, total, max) {
