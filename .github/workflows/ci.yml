@@ -22,8 +22,8 @@ jobs:
         with:
           node-version: 20
 
-      - name: Run tests
-        run: npm test
+      - name: Run CI-safe tests
+        run: npm run test:ci
 
       - name: Validate harness template
         run: npm run validate:template
