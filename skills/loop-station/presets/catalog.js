@@ -112,6 +112,7 @@ export function confidenceForScore(score) {
 export function materializePresetRecommendation({ stationRoot, recommendation, signals = {}, catalog = loadPresetCatalog(), recommendationId = "rec-001" }) {
   if (!stationRoot) throw new Error("stationRoot is required");
   const selected = selectedCandidates(recommendation);
+  const compatibilityReport = analyzePresetRecommendationCompatibility({ recommendation, signals });
 
   const presetRoot = join(stationRoot, "presets");
   const roleRoot = join(presetRoot, "roles");
@@ -122,6 +123,7 @@ export function materializePresetRecommendation({ stationRoot, recommendation, s
     generatedAt: new Date().toISOString(),
     source: "skills/loop-station/presets",
     signals,
+    compatibilityReport,
     roles: {},
     decisionFlow: []
   };
@@ -162,6 +164,60 @@ export function materializePresetRecommendation({ stationRoot, recommendation, s
   return summary;
 }
 
+export function analyzePresetRecommendationCompatibility({ recommendation, signals = {} }) {
+  const selected = selectedCandidates(recommendation);
+  const signalCapabilities = new Set(signals.peerCapabilities ?? []);
+  const selectedCapabilities = selectedRoleCapabilities(selected);
+  const warnings = [];
+  const errors = [];
+
+  for (const [role, candidate] of Object.entries(selected)) {
+    for (const [key, values] of Object.entries(candidate.preset.compatibility ?? {})) {
+      if (!key.startsWith("requires")) continue;
+      const peerRole = compatibilityPeerRole(key);
+      const available = new Set([
+        ...signalCapabilities,
+        ...(peerRole ? selectedCapabilities[peerRole] ?? [] : [])
+      ]);
+      const missing = values.filter((value) => !available.has(value));
+      if (missing.length > 0) {
+        warnings.push({
+          role,
+          presetId: candidate.preset.id,
+          check: key,
+          missing,
+          message: `${candidate.preset.id} expects ${key} ${missing.join(", ")}. Confirm the selected peers or setup signals provide this before treating the recommendation as executable.`
+        });
+      }
+    }
+  }
+
+  const runner = selected.runner?.preset;
+  const judgment = selected.judgment?.preset;
+  if (judgment && ["comparative", "challenge-review"].includes(judgment.specialization)) {
+    const hasCandidateRunner = runner?.specialization === "parallel-candidate"
+      || (signals.comparisonNeed ?? []).includes("runner-candidates")
+      || signalCapabilities.has("candidate_output_identity");
+    if (!hasCandidateRunner) {
+      warnings.push({
+        role: "judgment",
+        presetId: judgment.id,
+        check: "comparative-runner-candidate-pairing",
+        missing: ["parallel runner candidate evidence"],
+        message: `${judgment.id} compares or challenges candidate outputs, but the selected runner/signals do not clearly provide parallel candidate identity.`
+      });
+    }
+  }
+
+  return {
+    ok: errors.length === 0,
+    executable: false,
+    authority: "setup-risk-report-only",
+    warnings,
+    errors
+  };
+}
+
 function hardRejectReasons(preset, sharedPack, signals) {
   const reasons = [];
   const forbidden = new Set(sharedPack?.forbiddenResponsibilities ?? []);
@@ -192,6 +248,25 @@ function selectedCandidates(recommendation) {
     if (bundle?.selected) selected[role] = bundle.selected;
   }
   return selected;
+}
+
+function selectedRoleCapabilities(selected) {
+  const capabilities = {};
+  for (const [role, candidate] of Object.entries(selected)) {
+    capabilities[role] = new Set([
+      candidate.preset.specialization,
+      candidate.preset.specialization?.replaceAll("-", "_"),
+      ...(candidate.preset.authority?.adds ?? [])
+    ].filter(Boolean));
+  }
+  return capabilities;
+}
+
+function compatibilityPeerRole(key) {
+  if (key.includes("Runner")) return "runner";
+  if (key.includes("Judgment")) return "judgment";
+  if (key.includes("Orchestrator")) return "orchestrator";
+  return null;
 }
 
 function materializedRolePreset({ role, candidate, sharedPack, naturalReason }) {

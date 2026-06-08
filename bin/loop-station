@@ -10,6 +10,7 @@ import { discoverSkillProfile } from "../skills/loop-station/assets/harness-temp
 import { materializeAgentsFromLayout, normalizeLayoutConfig } from "../skills/loop-station/assets/harness-template/src/layout-config.js";
 import { profileDefinition } from "../skills/loop-station/assets/harness-template/src/profiles.js";
 import {
+  analyzePresetRecommendationCompatibility,
   applyPresetSelections,
   explainRoleRecommendation,
   loadPresetCatalog,
@@ -63,6 +64,11 @@ async function setup(args) {
   const presetRecommendation = specPath
     ? applyPresetSelections(recommendedPresets, seeded.presetSelections)
     : await promptPresetSelections(recommendedPresets, presetSignals);
+  const compatibilityReport = analyzePresetRecommendationCompatibility({
+    recommendation: presetRecommendation,
+    signals: presetSignals
+  });
+  printPresetCompatibilityReport(compatibilityReport);
 
   if (replace && existsSync(stationRoot)) {
     rmSync(stationRoot, { recursive: true, force: true });
@@ -275,6 +281,14 @@ function printPresetRecommendationSummary(materialized) {
   for (const decision of materialized.decisionFlow ?? []) {
     console.log(`- ${decision.role}: ${decision.selectedPresetId} (${decision.confidence}, ${decision.score})`);
     console.log(`  ${decision.reason}`);
+  }
+}
+
+function printPresetCompatibilityReport(report) {
+  if (!report || report.warnings.length === 0) return;
+  console.log("Role preset compatibility warnings:");
+  for (const warning of report.warnings) {
+    console.log(`- ${warning.message}`);
   }
 }
 

@@ -22,7 +22,9 @@ skills/loop-station/presets/
 
 `definitions.js` is the source of truth for catalog metadata, recommendation signals, compatibility metadata, and generated JSON artifacts. `generate.js` produces only the JSON artifacts that setup consumes and packages. The generated JSON files stay committed so installed skills can read plain catalog artifacts without evaluating extra generation steps.
 
-Prompt markdown is not generated from JavaScript. The files under `prompts/roles/**/*.md` are authored model-facing guidance referenced by `promptReference`. Use `prompts/PRESET_PROMPT_TEMPLATE.md` when adding or revising a preset prompt.
+Prompt markdown is not generated from JavaScript. The files under `prompts/roles/**/*.md` are authored model-facing guidance referenced by `promptReference`. They are not the canonical source for repeated behavioral contract fields such as authority, forbidden responsibilities, required evidence, recommendation signals, compatibility, level, or autonomy metadata. Those fields belong in `definitions.js` and generated JSON.
+
+Use `prompts/PRESET_PROMPT_TEMPLATE.md` when adding or revising a preset prompt. Prompt files may explain how a model should read the selected preset in context, but they must not introduce new authority, required artifacts, runtime permissions, or compatibility rules that are absent from the typed catalog source.
 
 ## Shared Trait Pack Shape
 
@@ -37,3 +39,5 @@ Role preset entries specialize a shared trait pack. Required fields include `id`
 Levels are maturity and safety ratings, not recommendation scores. Level 1 is sketch, Level 2 is draft, Level 3 is usable, Level 4 is hardened, and Level 5 is proven. Initial built-in presets target Level 3. Setup should not recommend Level 1 presets; Level 2 should appear only as a warning alternate when no Level 3 option exists.
 
 `autonomyLevel` is separate from `level`. It describes how much independent role-local judgment the preset may apply: higher values require stronger `autonomyEvidence` and stricter `autonomyLimits`. Recommendation output should explain both values when presenting a preset.
+
+`autonomyLevel` is recommendation and contract metadata only. It does not grant runtime transition authority, bypass station gates, or make a schema-valid setup executable by itself. Runtime authority still comes from `station.json`, station code, and explicit gate checks.

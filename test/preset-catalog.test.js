@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
+  analyzePresetRecommendationCompatibility,
   applyPresetSelections,
   loadPresetCatalog,
   materializePresetRecommendation,
@@ -346,6 +347,9 @@ describe("preset materialization", () => {
     const runnerFile = readJson(join(stationRoot, "presets", "roles", "runner.json"));
 
     assert.equal(recommendationFile.roles.runner.sourcePresetId, "runner.stage-bound-action");
+    assert.equal(recommendationFile.compatibilityReport.ok, true);
+    assert.equal(recommendationFile.compatibilityReport.executable, false);
+    assert.deepEqual(recommendationFile.compatibilityReport.warnings, []);
     assert.equal(recommendationFile.decisionFlow.length, 3);
     assert.equal(runnerFile.resolvedSharedTraits.id, "runner.shared");
     assert.equal(runnerFile.roleFamily, "performer");
@@ -375,6 +379,26 @@ describe("preset materialization", () => {
     assert.equal(summary.roles.runner.sourcePresetId, "runner.artifact-producing");
     assert.equal(summary.roles.judgment.sourcePresetId, "judgment.process-evidence");
     assert.equal(summary.decisionFlow.every((decision) => decision.decision.mode === "explicit-selection"), true);
+  });
+
+  it("records compatibility warnings without treating recommendation metadata as executable authority", () => {
+    const recommendation = recommendRolePresets({
+      workUnitShape: ["parallel-candidate", "single-case"],
+      transitionStyle: ["strict-sequential"],
+      runtimeBoundary: ["public-skill-only"],
+      mutationBoundary: ["consumer-output"],
+      evidenceStrictness: ["artifacts-only", "provenance-required"],
+      comparisonNeed: ["runner-candidates"],
+      requestedAutonomy: { orchestrator: 4, runner: 4, judgment: 4 },
+      requiredArtifacts: ["runner-report.md", "runner-metadata.json", "output-manifest.json"],
+      peerCapabilities: []
+    });
+
+    const report = analyzePresetRecommendationCompatibility({ recommendation, signals: { peerCapabilities: [] } });
+    assert.equal(report.ok, true);
+    assert.equal(report.executable, false);
+    assert.ok(report.warnings.length > 0);
+    assert.ok(report.warnings.every((warning) => Array.isArray(warning.missing)));
   });
 });
 

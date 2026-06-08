@@ -6,6 +6,8 @@ Loop Station setup should recommend role-machine presets before it generates the
 
 This document covers recommendation procedure and setup materialization expectations. The built-in preset catalog, initial preset files, scorer, and station-local materialization helper now follow this flow. Runtime behavior still comes from `station.json`.
 
+A recommendation is advisory setup evidence, not runtime permission. A selected preset can explain why a role shape fits the setup, but it cannot authorize a transition, skip a gate, execute a tool, or repair provider code unless the runtime configuration and station code already support that behavior.
+
 ## Inputs
 
 The recommendation engine should read only setup-time facts and discovered public contracts:
@@ -151,7 +153,7 @@ Built-in preset catalog entries remain canonical. A selected recommendation beco
 
 Materialized role preset files may inline resolved shared traits and selected specialization details so the station remains explainable without modifying the built-in catalog. User changes after setup should edit these station-local materialized preset files, not the built-in preset catalog. This avoids a split-brain state where both a preset and a separate override describe the same role differently.
 
-`station.json` remains the final runtime config. Recommendation and preset files explain how setup arrived at that config.
+`station.json` remains the final runtime config. Recommendation and preset files explain how setup arrived at that config. Materialized preset files are station-local role contracts and review evidence; they are not an executable policy layer.
 
 ## Compatibility Checks
 
@@ -164,7 +166,9 @@ Before materialization, setup should check:
 - Multi-stage runners are paired with orchestrator behavior that prevents unassigned stage continuation.
 - Comparative judgment is paired with multiple runner candidates or explicitly rejected as unnecessary.
 
-Warnings should be shown before generation. They should inform the user about combination risk without silently forcing a different choice. Hard failures should be reserved for combinations that violate role authority, such as a runner preset that performs final judgment.
+Warnings should be shown before generation and recorded in the materialized recommendation report. They should inform the user about combination risk without silently forcing a different choice. Hard failures should be reserved for combinations that violate role authority, such as a runner preset that performs final judgment.
+
+Compatibility checks are not runtime execution gates. They are setup-time risk reports that keep schema-valid recommendations separate from executable station behavior. A clean compatibility report means the selected presets are internally coherent enough to materialize; it does not mean the station may bypass runtime verification, artifact freshness checks, judgment gates, or human checkpoints.
 
 ## Follow-On Work
 
