@@ -8,8 +8,8 @@
   },
   "scripts": {
     "generate:presets": "node skills/loop-station/presets/generate.js",
-    "test": "node --test --test-concurrency=1 test/*.test.js skills/loop-station/assets/harness-template/test/*.test.js",
-    "test:ci": "node --test --test-concurrency=1 test/*.test.js skills/loop-station/assets/harness-template/test/cli-guard.test.js skills/loop-station/assets/harness-template/test/cli-start.test.js skills/loop-station/assets/harness-template/test/codex-trust.test.js skills/loop-station/assets/harness-template/test/completion.test.js skills/loop-station/assets/harness-template/test/message-lifecycle.test.js skills/loop-station/assets/harness-template/test/orchestrator.test.js skills/loop-station/assets/harness-template/test/pane-watcher.test.js skills/loop-station/assets/harness-template/test/skill-contract-discovery.test.js skills/loop-station/assets/harness-template/test/terminal-launch.test.js skills/loop-station/assets/harness-template/test/tmux-station.test.js skills/loop-station/assets/harness-template/test/tmux-transport.test.js skills/loop-station/assets/harness-template/test/validate.test.js",
+    "test": "node --test --test-concurrency=1 test/*.test.js skills/loop-station/assets/harness-template/test/*.test.js skills/loop-station/assets/harness-template/test/*.integration.js",
+    "test:ci": "node --test --test-concurrency=1 test/*.test.js skills/loop-station/assets/harness-template/test/*.test.js",
     "validate:template": "node skills/loop-station/assets/harness-template/bin/station validate",
     "validate:template:ci": "node skills/loop-station/assets/harness-template/bin/station validate --skip-tools",
     "smoke:template": "node skills/loop-station/assets/harness-template/bin/station smoke-run-one"
