@@ -15,6 +15,14 @@ When `request_user_input` is available, use it for bounded Install Mode decision
 
 Use plain-text questions when `request_user_input` is unavailable, when the answer must be open-ended, or when a path/value should be inspected from the workspace instead of chosen by the user.
 
+After the setup spec has enough target skill, stage, evidence, and policy information, preview role-machine presets before generating `.loop-station`. The CLI fallback is:
+
+```text
+loop-station interview --project <consumerRoot> --spec <setup-spec.json>
+```
+
+For Codex structured UI, ask the preset decisions in this order: `Orchestrator`, `Runner`, then `Judgment`. Use the recommendation reason as the question text, put the recommended preset first, and include up to two alternates.
+
 ## Required Decisions
 
 ### 1. Station Purpose

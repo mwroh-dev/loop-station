@@ -107,6 +107,23 @@ Plain-text fallback is acceptable when structured `request_user_input` is unavai
 
 Reasons should explain the setup in natural language. Avoid bare signal listings such as "stageContracts exists." Prefer sentences such as: "Because this setup is an ordered stage pipeline with schema-validated runner artifacts, the orchestrator should use the multi-stage preset so each stage closes before the next stage is dispatched."
 
+The root CLI supports a preview path before station generation:
+
+```text
+loop-station interview --project <dir> --spec <setup-spec.json>
+```
+
+This command reads the setup spec, derives the same recommendation signals used by setup, and prints role-by-role recommendations without creating or modifying `.loop-station`.
+
+When Codex `request_user_input` is available during Install Mode, use the same role order and recommendation content as the CLI preview. Ask one role decision at a time:
+
+- `id`: `orchestrator_preset`, `runner_preset`, or `judgment_preset`.
+- `header`: `Orchestrator`, `Runner`, or `Judgment`.
+- `question`: include the natural-language recommendation reason.
+- `options`: put the recommended preset first and mark it `(Recommended)`; include up to two alternates.
+
+When `request_user_input` is unavailable, use the plain-text CLI-style fallback with the same recommended preset, alternates, confidence, score, and reason.
+
 ## Materialization Flow
 
 Built-in preset catalog entries remain canonical. A selected recommendation becomes station-local state:

@@ -11,6 +11,7 @@ import { materializeAgentsFromLayout, normalizeLayoutConfig } from "../skills/lo
 import { profileDefinition } from "../skills/loop-station/assets/harness-template/src/profiles.js";
 import {
   applyPresetSelections,
+  explainRoleRecommendation,
   loadPresetCatalog,
   materializePresetRecommendation,
   recommendRolePresets
@@ -35,7 +36,7 @@ try {
   } else if (command === "init") {
     init(args);
   } else if (command === "interview") {
-    interview();
+    interview(args);
   } else {
     throw new Error(`Unknown command: ${command}`);
   }
@@ -146,7 +147,7 @@ function init(args) {
   console.log(`Initialized loop-station harness at ${destination}`);
 }
 
-function interview() {
+function interview(args = []) {
   console.log(`Loop Station interview draft:
 
 1. Which loop profile fits this workflow: evaluation-loop, recovery-loop, installation-loop, or action-pipeline?
@@ -167,6 +168,20 @@ Use loop-station install-skill to place the skill in the project-local .codex/sk
 Use loop-station setup to turn the approved setup proposal into .loop-station/station.json after the local skill install exists.
 The runtime always stays visible: trigger from the current Codex session, then attach or open a visible Terminal-backed tmux runtime.
 For normal installs, preserve existing .loop-station. For destructive test refreshes, use loop-station install --replace --project <dir>.`);
+
+  const specPath = readOption(args, "--spec");
+  if (!specPath) {
+    console.log(`
+Use loop-station interview --spec <json-file> to preview role preset recommendations before setup writes .loop-station.`);
+    return;
+  }
+
+  const project = resolve(readOption(args, "--project") ?? process.cwd());
+  const spec = JSON.parse(readFileSync(resolve(specPath), "utf8"));
+  const seeded = seedSetupSpec(project, spec);
+  const signals = setupPresetSignals(seeded);
+  const recommendation = recommendRolePresets(signals, loadPresetCatalog());
+  printPresetRecommendationPreview({ recommendation, signals });
 }
 
 async function promptPresetSelections(recommendation, signals) {
@@ -182,10 +197,7 @@ async function promptPresetSelections(recommendation, signals) {
       if (candidates.length === 0) {
         throw new Error(`No recommended presets or alternates found for role: ${role}`);
       }
-      output.write(`\n${rolePresetQuestion(role, bundle.selected, signals)}\n`);
-      candidates.forEach((candidate, index) => {
-        output.write(`${index + 1}. ${candidate.preset.title} (${candidate.preset.id}) - score ${candidate.score}, confidence ${candidate.confidence}\n`);
-      });
+      output.write(`\n${formatRolePresetRecommendation({ role, bundle, signals, includeQuestion: true })}\n`);
       const answer = await rl.question(`Choose ${role} preset [1]: `);
       const selection = parsePresetSelection(answer, candidates);
       selections.roles[role] = selection.preset.id;
@@ -196,31 +208,54 @@ async function promptPresetSelections(recommendation, signals) {
   return applyPresetSelections(recommendation, selections);
 }
 
-function rolePresetQuestion(role, selected, signals) {
-  const title = selected?.preset?.title ?? "(none)";
-  const context = setupContextForPrompt(signals);
+function printPresetRecommendationPreview({ recommendation, signals }) {
+  console.log("\nRole preset recommendation preview:");
+  console.log("This preview does not create or modify .loop-station. Run loop-station setup after approving the setup proposal.");
+  for (const role of ROLE_TYPE_ORDER) {
+    console.log("");
+    console.log(formatRolePresetRecommendation({ role, bundle: recommendation[role], signals, includeQuestion: false }));
+  }
+}
+
+function formatRolePresetRecommendation({ role, bundle, signals, includeQuestion }) {
+  const selected = bundle?.selected;
+  const candidates = [selected, ...(bundle?.alternates ?? [])].filter(Boolean);
+  const lines = [];
+  lines.push(`${roleLabel(role)} preset`);
+  if (includeQuestion) lines.push(rolePresetQuestion(role));
+  if (!selected) {
+    lines.push("No recommendable preset is available for this role.");
+    return lines.join("\n");
+  }
+  lines.push(`Recommended: ${selected.preset.title} (${selected.preset.id})`);
+  lines.push(`Reason: ${explainRoleRecommendation(role, selected, signals)}`);
+  lines.push(`Confidence: ${selected.confidence}; score: ${selected.score}`);
+  lines.push("Candidates:");
+  candidates.forEach((candidate, index) => {
+    const marker = index === 0 ? "Recommended" : "Alternate";
+    lines.push(`${index + 1}. ${candidate.preset.title} (${candidate.preset.id}) - ${marker}; confidence ${candidate.confidence}; score ${candidate.score}`);
+    for (const reason of candidate.reasons ?? []) {
+      lines.push(`   - ${reason}`);
+    }
+  });
+  return lines.join("\n");
+}
+
+function roleLabel(role) {
+  if (role === "orchestrator") return "Orchestrator";
+  if (role === "runner") return "Runner";
+  if (role === "judgment") return "Judgment";
+  return role;
+}
+
+function rolePresetQuestion(role) {
   if (role === "orchestrator") {
-    return `The current setup looks like ${context}. For the orchestrator, I recommend ${title} because the first decision is how the station should open, close, and advance task slots before any runner work is accepted.`;
+    return "Choose the orchestrator first because it owns station transition authority before runner work is accepted.";
   }
   if (role === "runner") {
-    return `Given the orchestrator decision and this setup shape, I recommend ${title} for the runner because this role must execute only the assigned work unit and produce artifacts without taking over judgment.`;
+    return "Choose the runner next because it owns the assigned execution unit and artifact production.";
   }
-  return `Given the selected execution shape, I recommend ${title} for judgment because this role must turn runner evidence into a verdict artifact that the orchestrator can gate on.`;
-}
-
-function setupContextForPrompt(signals) {
-  const parts = [
-    signalPromptPart("work", signals.workUnitShape),
-    signalPromptPart("transitions", signals.transitionStyle),
-    signalPromptPart("evidence", signals.evidenceStrictness),
-    signalPromptPart("runtime", signals.runtimeBoundary)
-  ].filter(Boolean);
-  return parts.join("; ") || "explicit role-machine setup";
-}
-
-function signalPromptPart(label, values) {
-  if (!Array.isArray(values) || values.length === 0) return "";
-  return `${label}: ${values.join(", ")}`;
+  return "Choose judgment last because it turns runner evidence into the verdict artifacts the orchestrator gates on.";
 }
 
 function parsePresetSelection(answer, candidates) {
@@ -740,7 +775,7 @@ Usage:
   loop-station install [--project <dir>] [--replace]
   loop-station setup [--project <dir>] [--spec <json-file>] [--replace]
   loop-station init <dir> [--force]
-  loop-station interview
+  loop-station interview [--project <dir>] [--spec <json-file>]
 
 Notes:
   install-skill copies the skill bundle into <project>/.codex/skills/loop-station only.

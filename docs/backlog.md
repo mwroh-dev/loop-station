@@ -25,7 +25,9 @@ Status: backlog.
 Current state:
 
 - `loop-station setup` can recommend and materialize role presets.
+- `loop-station interview --spec` can preview role preset recommendations without creating `.loop-station`.
 - Interactive setup asks role preset questions in this order: `Orchestrator`, then `Runner`, then `Judgment`.
+- Install Mode references describe the `request_user_input` role-by-role question shape when the tool is available.
 - Non-interactive setup can provide explicit `presetSelections.roles`.
 - Recommendation files record role decisions, alternates, scores, confidence, and natural-language reasons.
 
@@ -36,10 +38,8 @@ The core decision flow exists, but the interaction design can be improved withou
 Next work:
 
 - Present each role decision with clearer option labels.
-- Support a richer `request_user_input` path when available.
 - Keep a plain-text fallback for terminal setup.
-- Show the natural-language reason before asking for the role decision.
-- Keep role decisions sequential rather than asking for one global bundle acceptance.
+- Add richer compatibility warnings before final setup generation.
 
 Acceptance criteria:
 

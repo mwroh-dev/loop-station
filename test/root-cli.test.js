@@ -485,4 +485,44 @@ describe("loop-station root CLI", () => {
     assert.match(result.stdout, /loop-station setup/i);
     assert.match(result.stdout, /Skill-install-only/i);
   });
+
+  it("interview previews role preset recommendations from a setup spec without creating a station", () => {
+    const project = mkdtempSync(join(tmpdir(), "loop-station-interview-presets-"));
+    const specPath = join(project, "setup-spec.json");
+    writeFileSync(specPath, `${JSON.stringify({
+      loopType: "action-pipeline",
+      stageContracts: [
+        {
+          id: "extract-entities",
+          skill: "$entity-extractor",
+          requiredArtifacts: ["runner-report.md", "runner-metadata.json", "output-manifest.json", "entities.json"],
+          artifactSchemas: {
+            "entities.json": {
+              type: "object",
+              required: ["entities"]
+            }
+          }
+        }
+      ]
+    }, null, 2)}\n`);
+
+    const result = spawnSync(process.execPath, [bin, "interview", "--project", project, "--spec", specPath], {
+      cwd: root,
+      encoding: "utf8"
+    });
+
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.match(result.stdout, /Role preset recommendation preview/);
+    assert.match(result.stdout, /Orchestrator preset/);
+    assert.match(result.stdout, /Recommended: Multi-Stage Orchestrator \(orchestrator\.multi-stage\)/);
+    assert.match(result.stdout, /Runner preset/);
+    assert.match(result.stdout, /Recommended: Stage-Bound Action Runner \(runner\.stage-bound-action\)/);
+    assert.match(result.stdout, /Judgment preset/);
+    assert.match(result.stdout, /Recommended: Artifact-Contract Judgment \(judgment\.artifact-contract\)/);
+    assert.match(result.stdout, /Reason: Because this setup says/);
+    assert.match(result.stdout, /Candidates:/);
+    assert.equal(existsSync(join(project, ".loop-station")), false);
+
+    rmSync(project, { recursive: true, force: true });
+  });
 });
