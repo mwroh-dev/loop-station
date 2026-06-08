@@ -6,11 +6,12 @@ Recommendation scoring is explicit and inspectable. A candidate score is a 0-100
 
 | Dimension | Weight | Evidence |
 | --- | ---: | --- |
-| Signal match | 35 | Preset signals match normalized setup signals. |
+| Signal match | 30 | Preset signals match normalized setup signals. |
 | Authority fit | 20 | Preset respects mutation, checkpoint, and role boundaries. |
 | Evidence fit | 20 | Preset can produce or evaluate required artifacts and provenance. |
 | Compatibility | 15 | Preset works with selected role peers and loop profile. |
-| Maturity level | 10 | Preset `level` is high enough for recommendation. |
+| Autonomy fit | 10 | Preset `autonomyLevel` matches the requested role-local judgment level. |
+| Maturity level | 5 | Preset `level` is high enough for recommendation. |
 
 Confidence maps from score: `high` is 80-100, `medium` is 60-79, `low` is 40-59, and `notRecommended` is below 40.
 
@@ -20,7 +21,7 @@ Hard authority violations override score and remove the candidate from recommend
 
 ## Tie-Breaks
 
-When scores are close, setup should prefer higher authority fit, higher evidence fit, higher level, lower complexity, and existing loop profile compatibility. A candidate within 5 points of the selected preset should be shown as a meaningful alternate.
+When scores are close, setup should prefer higher authority fit, higher evidence fit, higher autonomy fit, higher level, lower complexity, and existing loop profile compatibility. A candidate within 5 points of the selected preset should be shown as a meaningful alternate.
 
 ## Helper Boundary
 

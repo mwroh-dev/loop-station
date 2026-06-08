@@ -523,6 +523,7 @@ describe("loop-station root CLI", () => {
     assert.match(result.stdout, /Judgment preset/);
     assert.match(result.stdout, /Recommended: Artifact-Contract Judgment \(judgment\.artifact-contract\)/);
     assert.match(result.stdout, /Reason: Because this setup says/);
+    assert.match(result.stdout, /Autonomy level: \d; maturity level: 3/);
     assert.match(result.stdout, /Candidates:/);
     assert.equal(existsSync(join(project, ".loop-station")), false);
 

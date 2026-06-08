@@ -1,0 +1,89 @@
+{
+  "id": "orchestrator.parallel-capacity",
+  "role": "orchestrator",
+  "roleFamily": "manager",
+  "title": "Parallel Capacity Orchestrator",
+  "inherits": "orchestrator.shared",
+  "level": 3,
+  "autonomyLevel": 4,
+  "specialization": "parallel-capacity",
+  "purpose": "Dispatch bounded parallel runner candidates or lanes while preserving candidate identity and deferring final selection to judgment.",
+  "autonomyEvidence": [
+    "candidate dispatch identities",
+    "lane capacity policy",
+    "candidate output manifests",
+    "comparative judgment verdict"
+  ],
+  "autonomyLimits": [
+    "cannot choose a winner without judgment verdict",
+    "cannot merge candidate artifacts",
+    "cannot exceed declared lane capacity"
+  ],
+  "signals": {
+    "transitionStyle": [
+      "strict-sequential"
+    ],
+    "failurePath": [
+      "retry",
+      "stop"
+    ],
+    "workUnitShape": [
+      "parallel-candidate"
+    ],
+    "comparisonNeed": [
+      "runner-candidates",
+      "judge-panel"
+    ]
+  },
+  "authority": {
+    "adds": [
+      "parallel_lane_capacity_gate",
+      "candidate_identity_gate",
+      "comparative_judgment_gate"
+    ],
+    "forbids": [
+      "candidate_artifact_merge",
+      "winner_selection_without_judgment"
+    ]
+  },
+  "artifacts": {
+    "required": [
+      "dispatch-request.json",
+      "output-manifest.json",
+      "comparison-matrix.json",
+      "eval-verdict.json"
+    ],
+    "provenanceRequired": true
+  },
+  "recommendation": {
+    "defaultConfidence": "medium",
+    "preferredWhen": [
+      "workUnitShape == parallel-candidate",
+      "comparisonNeed in [runner-candidates,judge-panel]"
+    ],
+    "avoidWhen": [
+      "comparisonNeed == none",
+      "workUnitShape == human-checkpoint"
+    ]
+  },
+  "compatibility": {
+    "requiresRunnerCapabilities": [
+      "candidate_output_identity",
+      "runner_artifacts"
+    ],
+    "compatibleRunnerCapabilities": [
+      "parallel_candidate"
+    ],
+    "compatibleJudgmentCapabilities": [
+      "comparative",
+      "challenge_review"
+    ]
+  },
+  "promptReference": "prompts/roles/orchestrator/parallel-capacity.md",
+  "selfReviewChecklist": [
+    "Lane capacity is explicit and bounded.",
+    "Every candidate keeps identity and provenance.",
+    "Final winner selection is delegated to judgment.",
+    "Parallel dispatch does not bypass required artifacts."
+  ]
+}

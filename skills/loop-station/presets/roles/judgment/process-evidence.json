@@ -1,11 +1,24 @@
 {
   "id": "judgment.process-evidence",
   "role": "judgment",
+  "roleFamily": "evaluator",
   "title": "Process-Evidence Judgment",
   "inherits": "judgment.shared",
   "level": 3,
+  "autonomyLevel": 3,
   "specialization": "process-evidence",
   "purpose": "Evaluate whether the runner stayed inside the allowed skill, runtime, mutation, and checkpoint boundaries while producing artifacts.",
+  "autonomyEvidence": [
+    "runner metadata",
+    "skill runtime evidence",
+    "mutation boundary evidence",
+    "checkpoint evidence when required"
+  ],
+  "autonomyLimits": [
+    "cannot execute missing process steps",
+    "cannot accept output quality as process evidence",
+    "cannot advance station state"
+  ],
   "signals": {
     "evidenceStrictness": [
       "provenance-required",

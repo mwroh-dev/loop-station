@@ -1,11 +1,24 @@
 {
   "id": "orchestrator.human-gated",
   "role": "orchestrator",
+  "roleFamily": "manager",
   "title": "Human-Gated Orchestrator",
   "inherits": "orchestrator.shared",
   "level": 3,
+  "autonomyLevel": 3,
   "specialization": "human-gated",
   "purpose": "Pause at human-owned checkpoints and resume only after explicit checkpoint evidence belongs to the active dispatch.",
+  "autonomyEvidence": [
+    "checkpoint request",
+    "checkpoint evidence",
+    "active dispatch identity",
+    "judgment verdict"
+  ],
+  "autonomyLimits": [
+    "cannot automate human-owned actions",
+    "cannot resume without matching checkpoint evidence",
+    "cannot treat silence as approval"
+  ],
   "signals": {
     "transitionStyle": [
       "human-gated",

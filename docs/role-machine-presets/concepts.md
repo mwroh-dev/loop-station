@@ -16,6 +16,18 @@ Loop Station uses a deterministic station controller with model panes as bounded
 
 `Domain Overlay` adapts role presets to a domain or industry after role selection. It sits on top of role specialization.
 
+`Role Family` is the higher-level abstraction behind the Loop Station role name. `Orchestrator` belongs to the `manager` family, `Runner` belongs to the `performer` family, and `Judgment` belongs to the `evaluator` family. The family name helps compare role machines across domains without renaming the existing station roles.
+
+`Autonomy Level` describes how much independent judgment a role preset may apply inside its authority boundary. It is separate from catalog `level`, which remains a maturity and safety rating. A high-autonomy preset still cannot take forbidden responsibilities from another family.
+
+## Autonomy Levels
+
+Manager autonomy ranges from manual tracking, sequential dispatch, evidence gates, retry/rerun routing, parallel or adaptive handoff, to policy management. Skip authority is high risk and requires explicit policy, evidence, and approval gates; it is not granted by the current built-in presets.
+
+Performer autonomy ranges from direct instruction execution, artifact production, bounded stage or public runtime execution, blocker-aware execution, bounded candidate generation, to multi-strategy execution. A performer never makes the final station verdict.
+
+Evaluator autonomy ranges from self-report review, artifact existence checks, schema/provenance/freshness checks, process-boundary verdicts, comparative or challenge review, to calibrated risk evaluation. An evaluator may recommend transitions but never mutates station state directly.
+
 ## Composition
 
 Role presets compose in this order:

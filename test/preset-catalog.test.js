@@ -88,33 +88,45 @@ describe("preset catalog role specializations", () => {
   const expected = {
     orchestrator: {
       inherits: "orchestrator.shared",
-      files: ["strict-sequential", "human-gated", "multi-stage"],
+      files: ["strict-sequential", "human-gated", "multi-stage", "recovery-rerun", "parallel-capacity"],
+      roleFamily: "manager",
       sharedForbidden: ["runner_task_execution", "runner_artifact_fabrication", "judgment_verdict_fabrication"],
       requiredCapabilityPrefix: "compatible"
     },
     runner: {
       inherits: "runner.shared",
-      files: ["artifact-producing", "stage-bound-action", "human-checkpoint"],
+      files: ["artifact-producing", "stage-bound-action", "human-checkpoint", "parallel-candidate"],
+      roleFamily: "performer",
       sharedForbidden: ["final_judgment", "station_advance", "target_skill_bypass"],
       requiredCapabilityPrefix: "requires"
     },
     judgment: {
       inherits: "judgment.shared",
-      files: ["artifact-contract", "process-evidence", "comparative"],
+      files: ["artifact-contract", "process-evidence", "comparative", "verifier-backed", "challenge-review"],
+      roleFamily: "evaluator",
       sharedForbidden: ["runner_task_execution", "runner_artifact_fabrication", "station_advance"],
       requiredCapabilityPrefix: "requires"
     }
   };
 
   for (const [role, expectation] of Object.entries(expected)) {
-    it(`defines three Level 3 ${role} role presets`, () => {
+    it(`defines Level 3 ${role} role presets with autonomy metadata`, () => {
       const sharedPack = readSharedPack(role);
+      assert.equal(sharedPack.roleFamily, expectation.roleFamily);
+      assert.equal(typeof sharedPack.autonomyLevel, "number");
+      assertNonEmptyArray(sharedPack.autonomyEvidence, "shared.autonomyEvidence");
+      assertNonEmptyArray(sharedPack.autonomyLimits, "shared.autonomyLimits");
       for (const presetName of expectation.files) {
         const preset = readRolePreset(role, presetName);
         assert.equal(preset.id, `${role}.${presetName}`);
         assert.equal(preset.role, role);
+        assert.equal(preset.roleFamily, expectation.roleFamily);
         assert.equal(preset.inherits, expectation.inherits);
         assert.equal(preset.level, 3);
+        assert.equal(typeof preset.autonomyLevel, "number");
+        assert.ok(preset.autonomyLevel >= 0 && preset.autonomyLevel <= 5);
+        assertNonEmptyArray(preset.autonomyEvidence, "autonomyEvidence");
+        assertNonEmptyArray(preset.autonomyLimits, "autonomyLimits");
         assert.equal(preset.specialization, presetName);
         assert.ok(preset.purpose.length > 30);
         assertNonEmptyObject(preset.signals, "signals");
@@ -214,11 +226,49 @@ describe("preset recommendation scoring", () => {
       evidenceStrictness: ["artifacts-only", "schema-validated", "provenance-required"],
       comparisonNeed: ["runner-candidates"],
       requiredArtifacts: ["runner-report.md", "runner-metadata.json", "output-manifest.json", "eval-report.md", "eval-verdict.json", "comparison-matrix.json"],
-      peerCapabilities: ["candidate_output_identity", "runner_artifacts", "single_active_dispatch", "judgment_required_advance"]
+      requestedAutonomy: { orchestrator: 4, runner: 4, judgment: 4 },
+      peerCapabilities: ["candidate_output_identity", "runner_artifacts", "parallel_lane_capacity_gate", "candidate_identity_gate", "comparative_judgment_gate", "judgment_required_advance"]
     });
 
+    assert.equal(recommendations.orchestrator.selected.preset.id, "orchestrator.parallel-capacity");
+    assert.equal(recommendations.runner.selected.preset.id, "runner.parallel-candidate");
     assert.equal(recommendations.judgment.selected.preset.id, "judgment.comparative");
-    assert.ok(recommendations.judgment.alternates.some((candidate) => candidate.preset.id === "judgment.artifact-contract"));
+    assert.ok(recommendations.judgment.alternates.some((candidate) => candidate.preset.id === "judgment.challenge-review"));
+  });
+
+  it("selects recovery rerun manager when setup signals require provider handoff and rerun gates", () => {
+    const recommendations = recommendRolePresets({
+      workUnitShape: ["single-case", "repeated-case"],
+      transitionStyle: ["recovery", "strict-sequential"],
+      failurePath: ["provider-handoff", "deploy-verify", "retry", "stop"],
+      runtimeBoundary: ["public-skill-only", "allowed-runtime-call"],
+      mutationBoundary: ["consumer-output"],
+      evidenceStrictness: ["artifacts-only", "provenance-required", "verifier-required"],
+      comparisonNeed: ["none"],
+      requestedAutonomy: { orchestrator: 3, runner: 2, judgment: 4 },
+      requiredArtifacts: ["runner-report.md", "runner-metadata.json", "output-manifest.json", "eval-report.md", "eval-verdict.json", "reports/verification.json"],
+      peerCapabilities: ["failure_evidence_router", "retry_rerun_gate", "provider_handoff_gate", "runner_artifacts", "skill_runtime_evidence", "provenance", "verifier_backed"]
+    });
+
+    assert.equal(recommendations.orchestrator.selected.preset.id, "orchestrator.recovery-rerun");
+  });
+
+  it("includes verifier-backed judgment when verifier, schema, and provenance evidence are required", () => {
+    const recommendations = recommendRolePresets({
+      workUnitShape: ["ordered-stage"],
+      transitionStyle: ["multi-stage", "strict-sequential"],
+      failurePath: ["retry", "stop"],
+      runtimeBoundary: ["public-skill-only", "allowed-runtime-call"],
+      mutationBoundary: ["consumer-output"],
+      evidenceStrictness: ["artifacts-only", "schema-validated", "provenance-required", "verifier-required"],
+      comparisonNeed: ["none"],
+      requestedAutonomy: { orchestrator: 2, runner: 2, judgment: 4 },
+      requiredArtifacts: ["stage-contract.json", "runner-report.md", "runner-metadata.json", "output-manifest.json", "eval-report.md", "eval-verdict.json", "reports/verification.json"],
+      peerCapabilities: ["execute_one_stage", "stop_after_assigned_stage", "stage_order_gate", "single_active_stage", "runner_artifacts", "skill_runtime_evidence", "provenance", "judgment_required_advance"]
+    });
+
+    const judgmentCandidates = [recommendations.judgment.selected, ...recommendations.judgment.alternates].map((candidate) => candidate.preset.id);
+    assert.ok(judgmentCandidates.includes("judgment.verifier-backed"));
   });
 
   it("hard rejects a candidate that adds a shared forbidden responsibility", () => {
@@ -298,7 +348,12 @@ describe("preset materialization", () => {
     assert.equal(recommendationFile.roles.runner.sourcePresetId, "runner.stage-bound-action");
     assert.equal(recommendationFile.decisionFlow.length, 3);
     assert.equal(runnerFile.resolvedSharedTraits.id, "runner.shared");
+    assert.equal(runnerFile.roleFamily, "performer");
+    assert.equal(typeof runnerFile.autonomyLevel, "number");
+    assertNonEmptyArray(runnerFile.autonomyEvidence, "runnerFile.autonomyEvidence");
+    assertNonEmptyArray(runnerFile.autonomyLimits, "runnerFile.autonomyLimits");
     assert.equal(runnerFile.resolvedSpecialization.specialization, "stage-bound-action");
+    assert.equal(runnerFile.resolvedSpecialization.roleFamily, "performer");
     assert.equal(runnerFile.selectedBecause.confidence, "high");
     assert.match(runnerFile.selectedBecause.reason, /Because this setup says/);
     assert.equal(runnerFile.stationLocalEditing.editableAfterSetup, true);
@@ -372,6 +427,7 @@ function stageSignals() {
     mutationBoundary: ["consumer-output"],
     evidenceStrictness: ["artifacts-only", "schema-validated", "provenance-required"],
     comparisonNeed: ["none"],
+    requestedAutonomy: { orchestrator: 2, runner: 2, judgment: 2 },
     requiredArtifacts: ["stage-contract.json", "runner-report.md", "runner-metadata.json", "output-manifest.json", "eval-report.md", "eval-verdict.json"],
     peerCapabilities: [
       "execute_one_stage",

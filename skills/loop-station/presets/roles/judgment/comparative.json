@@ -1,11 +1,24 @@
 {
   "id": "judgment.comparative",
   "role": "judgment",
+  "roleFamily": "evaluator",
   "title": "Comparative Judgment",
   "inherits": "judgment.shared",
   "level": 3,
+  "autonomyLevel": 4,
   "specialization": "comparative",
   "purpose": "Compare multiple runner candidate outputs against the same contract and write a winner, no-pass, or rerun recommendation.",
+  "autonomyEvidence": [
+    "candidate output identities",
+    "shared evaluation contract",
+    "candidate provenance",
+    "comparison matrix"
+  ],
+  "autonomyLimits": [
+    "cannot merge candidate artifacts",
+    "cannot create winning artifact",
+    "cannot ignore candidate provenance"
+  ],
   "signals": {
     "evidenceStrictness": [
       "artifacts-only",

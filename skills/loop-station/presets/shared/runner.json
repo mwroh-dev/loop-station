@@ -1,9 +1,21 @@
 {
   "id": "runner.shared",
   "role": "runner",
+  "roleFamily": "performer",
   "title": "Shared Runner Traits",
   "level": 3,
+  "autonomyLevel": 2,
   "purpose": "Execute exactly one assigned case, stage, or task through the allowed public boundary and produce required runner-owned artifacts.",
+  "autonomyEvidence": [
+    "assigned task envelope",
+    "allowed public skill or runtime boundary",
+    "runner artifact provenance"
+  ],
+  "autonomyLimits": [
+    "cannot make final station verdict",
+    "cannot advance station state",
+    "cannot expand into unassigned work"
+  ],
   "authority": [
     "execute_assigned_task",
     "invoke_configured_public_skill_or_allowed_runtime",

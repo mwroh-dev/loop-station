@@ -5,11 +5,12 @@ import { ROLE_TYPE_ORDER } from "./definitions.js";
 
 const catalogRoot = dirname(fileURLToPath(import.meta.url));
 const weights = {
-  signalMatch: 35,
+  signalMatch: 30,
   authorityFit: 20,
   evidenceFit: 20,
   compatibility: 15,
-  maturityLevel: 10
+  autonomyFit: 10,
+  maturityLevel: 5
 };
 
 export function loadPresetCatalog(root = catalogRoot) {
@@ -86,6 +87,7 @@ export function scoreRolePreset(preset, sharedPack, signals = {}) {
     authorityFit: scoreAuthorityFit(preset, sharedPack, signals),
     evidenceFit: scoreEvidenceFit(preset, signals),
     compatibility: scoreCompatibility(preset, signals),
+    autonomyFit: scoreAutonomyFit(preset, signals),
     maturityLevel: scoreMaturityLevel(preset)
   };
   const score = Math.round(Object.values(dimensions).reduce((sum, value) => sum + value, 0));
@@ -196,10 +198,18 @@ function materializedRolePreset({ role, candidate, sharedPack, naturalReason }) 
   return {
     sourcePresetId: candidate.preset.id,
     role,
+    roleFamily: candidate.preset.roleFamily,
     level: candidate.preset.level,
+    autonomyLevel: candidate.preset.autonomyLevel,
+    autonomyEvidence: candidate.preset.autonomyEvidence,
+    autonomyLimits: candidate.preset.autonomyLimits,
     resolvedSharedTraits: {
       id: sharedPack.id,
+      roleFamily: sharedPack.roleFamily,
       purpose: sharedPack.purpose,
+      autonomyLevel: sharedPack.autonomyLevel,
+      autonomyEvidence: sharedPack.autonomyEvidence,
+      autonomyLimits: sharedPack.autonomyLimits,
       authority: sharedPack.authority,
       forbiddenResponsibilities: sharedPack.forbiddenResponsibilities,
       requiredEvidence: sharedPack.requiredEvidence,
@@ -208,6 +218,10 @@ function materializedRolePreset({ role, candidate, sharedPack, naturalReason }) 
     resolvedSpecialization: {
       specialization: candidate.preset.specialization,
       purpose: candidate.preset.purpose,
+      roleFamily: candidate.preset.roleFamily,
+      autonomyLevel: candidate.preset.autonomyLevel,
+      autonomyEvidence: candidate.preset.autonomyEvidence,
+      autonomyLimits: candidate.preset.autonomyLimits,
       signals: candidate.preset.signals,
       authority: candidate.preset.authority,
       artifacts: candidate.preset.artifacts,
@@ -283,6 +297,18 @@ function scoreCompatibility(preset, signals) {
   return ratioScore(matches, values.length, weights.compatibility);
 }
 
+function scoreAutonomyFit(preset, signals) {
+  const requested = signals.requestedAutonomy?.[preset.role] ?? signals.requestedAutonomy?.[preset.roleFamily];
+  if (requested == null) return ratioScore(Math.min(preset.autonomyLevel ?? 0, 5), 5, weights.autonomyFit);
+  const level = preset.autonomyLevel ?? 0;
+  const distance = Math.abs(level - requested);
+  if (distance === 0) return weights.autonomyFit;
+  if (level > requested && distance === 1) return Math.round(weights.autonomyFit * 0.8);
+  if (level < requested && distance === 1) return Math.round(weights.autonomyFit * 0.6);
+  if (level > requested) return Math.round(weights.autonomyFit * 0.4);
+  return Math.round(weights.autonomyFit * 0.2);
+}
+
 function scoreMaturityLevel(preset) {
   return ratioScore(Math.min(preset.level ?? 0, 5), 5, weights.maturityLevel);
 }
@@ -292,6 +318,7 @@ function compareCandidateScores(left, right) {
   if (right.score !== left.score) return right.score - left.score;
   if (right.dimensions.authorityFit !== left.dimensions.authorityFit) return right.dimensions.authorityFit - left.dimensions.authorityFit;
   if (right.dimensions.evidenceFit !== left.dimensions.evidenceFit) return right.dimensions.evidenceFit - left.dimensions.evidenceFit;
+  if (right.dimensions.autonomyFit !== left.dimensions.autonomyFit) return right.dimensions.autonomyFit - left.dimensions.autonomyFit;
   if ((right.preset.level ?? 0) !== (left.preset.level ?? 0)) return (right.preset.level ?? 0) - (left.preset.level ?? 0);
   return left.preset.id.localeCompare(right.preset.id);
 }
@@ -305,20 +332,24 @@ function explainScore(preset, dimensions) {
   if (preset.recommendation?.defaultConfidence) {
     reasons.push(`catalog default confidence is ${preset.recommendation.defaultConfidence}`);
   }
+  if (preset.autonomyLevel != null) {
+    reasons.push(`autonomy level is ${preset.autonomyLevel}; maturity level is ${preset.level}`);
+  }
   return reasons;
 }
 
 export function explainRoleRecommendation(role, candidate, signals = {}) {
   const presetName = candidate.preset.title ?? candidate.preset.id;
   const context = setupContextSentence(signals);
+  const autonomy = `It is autonomy level ${candidate.preset.autonomyLevel} while catalog maturity level remains ${candidate.preset.level}.`;
   if (role === "orchestrator") {
-    return `${context} The orchestrator should use ${presetName} because it is the role that controls when work moves from one station step to the next, and this preset matches the transition gates the setup needs before any runner or judgment work can be trusted.`;
+    return `${context} The orchestrator should use ${presetName} because it is the manager family role that controls when work moves from one station step to the next, and this preset matches the transition gates the setup needs before any runner or judgment work can be trusted. ${autonomy}`;
   }
   if (role === "runner") {
-    return `${context} The runner should use ${presetName} because the assigned work shape and runtime boundary require an executor that produces artifacts for exactly its assigned unit of work without deciding the final station verdict.`;
+    return `${context} The runner should use ${presetName} because it is the performer family role and the assigned work shape and runtime boundary require an executor that produces artifacts for exactly its assigned unit of work without deciding the final station verdict. ${autonomy}`;
   }
   if (role === "judgment") {
-    return `${context} The judgment role should use ${presetName} because the setup needs verdict artifacts based on the runner's evidence, provenance, and freshness rather than relying on runner self-report.`;
+    return `${context} The judgment role should use ${presetName} because it is the evaluator family role and the setup needs verdict artifacts based on the runner's evidence, provenance, and freshness rather than relying on runner self-report. ${autonomy}`;
   }
   return `${context} ${presetName} is the highest scoring preset for this role.`;
 }
@@ -353,6 +384,7 @@ function zeroDimensions() {
     authorityFit: 0,
     evidenceFit: 0,
     compatibility: 0,
+    autonomyFit: 0,
     maturityLevel: 0
   };
 }

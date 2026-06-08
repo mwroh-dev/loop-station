@@ -1,11 +1,23 @@
 {
   "id": "runner.artifact-producing",
   "role": "runner",
+  "roleFamily": "performer",
   "title": "Artifact-Producing Runner",
   "inherits": "runner.shared",
   "level": 3,
+  "autonomyLevel": 2,
   "specialization": "artifact-producing",
   "purpose": "Execute the assigned case or attempt and produce the required runner artifacts with provenance.",
+  "autonomyEvidence": [
+    "assigned case or attempt",
+    "public skill boundary",
+    "runner artifact provenance"
+  ],
+  "autonomyLimits": [
+    "cannot decide final verdict",
+    "cannot repair provider source",
+    "cannot continue into unassigned work"
+  ],
   "signals": {
     "workUnitShape": [
       "single-case",

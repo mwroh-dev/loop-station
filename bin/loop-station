@@ -230,6 +230,7 @@ function formatRolePresetRecommendation({ role, bundle, signals, includeQuestion
   }
   lines.push(`Recommended: ${selected.preset.title} (${selected.preset.id})`);
   lines.push(`Reason: ${explainRoleRecommendation(role, selected, signals)}`);
+  lines.push(`Autonomy level: ${selected.preset.autonomyLevel}; maturity level: ${selected.preset.level}`);
   lines.push(`Confidence: ${selected.confidence}; score: ${selected.score}`);
   lines.push("Candidates:");
   candidates.forEach((candidate, index) => {
@@ -626,9 +627,13 @@ function setupPresetSignals(spec) {
     spec.profiles.some((profile) => (profile?.allowedPublicRuntimeCalls ?? []).length > 0) ? "allowed-runtime-call" : null,
     "public-skill-only"
   ].filter(Boolean));
+  const hasParallelCandidates = spec.loopType === "evaluation-only" && (spec.roles.runner ?? 0) > 1;
   const comparisonNeed = unique([
-    spec.loopType === "evaluation-only" && (spec.roles.runner ?? 0) > 1 ? "runner-candidates" : "none"
+    hasParallelCandidates ? "runner-candidates" : "none"
   ]);
+  const recoveryFlow = ["skill-improvement", "recovery-loop", "installation-loop"].includes(spec.loopType);
+  const hasVerifier = evidenceStrictness.includes("verifier-required")
+    || requiredArtifacts.some((artifact) => /verification\.json/i.test(artifact));
   return {
     workUnitShape,
     evidenceStrictness,
@@ -638,11 +643,16 @@ function setupPresetSignals(spec) {
     comparisonNeed,
     runtimeBoundary,
     requiredArtifacts,
-    peerCapabilities: setupPeerCapabilities({ hasStages, hasHumanCheckpoint, comparisonNeed })
+    requestedAutonomy: {
+      orchestrator: hasParallelCandidates ? 4 : recoveryFlow || hasHumanCheckpoint ? 3 : 2,
+      runner: hasParallelCandidates ? 4 : hasHumanCheckpoint ? 3 : 2,
+      judgment: hasParallelCandidates || hasVerifier ? 4 : hasHumanCheckpoint ? 3 : 2
+    },
+    peerCapabilities: setupPeerCapabilities({ hasStages, hasHumanCheckpoint, hasParallelCandidates, hasVerifier, recoveryFlow, comparisonNeed })
   };
 }
 
-function setupPeerCapabilities({ hasStages, hasHumanCheckpoint, comparisonNeed }) {
+function setupPeerCapabilities({ hasStages, hasHumanCheckpoint, hasParallelCandidates, hasVerifier, recoveryFlow, comparisonNeed }) {
   return unique([
     "single_active_dispatch",
     "judgment_required_advance",
@@ -660,7 +670,14 @@ function setupPeerCapabilities({ hasStages, hasHumanCheckpoint, comparisonNeed }
     hasHumanCheckpoint ? "resume_after_human_evidence" : null,
     hasHumanCheckpoint ? "human_checkpoint_stop" : null,
     hasHumanCheckpoint ? "checkpoint_evidence_recording" : null,
-    comparisonNeed.includes("runner-candidates") ? "candidate_output_identity" : null
+    recoveryFlow ? "failure_evidence_router" : null,
+    recoveryFlow ? "retry_rerun_gate" : null,
+    recoveryFlow ? "provider_handoff_gate" : null,
+    hasParallelCandidates ? "parallel_lane_capacity_gate" : null,
+    hasParallelCandidates ? "candidate_identity_gate" : null,
+    hasParallelCandidates ? "comparative_judgment_gate" : null,
+    comparisonNeed.includes("runner-candidates") ? "candidate_output_identity" : null,
+    hasVerifier ? "verifier_backed" : null
   ].filter(Boolean));
 }
 

@@ -1,11 +1,23 @@
 {
   "id": "runner.human-checkpoint",
   "role": "runner",
+  "roleFamily": "performer",
   "title": "Human-Checkpoint Runner",
   "inherits": "runner.shared",
   "level": 3,
+  "autonomyLevel": 3,
   "specialization": "human-checkpoint",
   "purpose": "Prepare the assigned work, stop for a human-owned action, and record checkpoint evidence without replacing the human step.",
+  "autonomyEvidence": [
+    "checkpoint request",
+    "human checkpoint evidence",
+    "runner metadata"
+  ],
+  "autonomyLimits": [
+    "cannot automate human-owned action",
+    "cannot synthesize checkpoint evidence",
+    "cannot continue after checkpoint without dispatch"
+  ],
   "signals": {
     "workUnitShape": [
       "human-checkpoint",

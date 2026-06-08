@@ -1,11 +1,24 @@
 {
   "id": "orchestrator.strict-sequential",
   "role": "orchestrator",
+  "roleFamily": "manager",
   "title": "Strict Sequential Orchestrator",
   "inherits": "orchestrator.shared",
   "level": 3,
+  "autonomyLevel": 2,
   "specialization": "strict-sequential",
   "purpose": "Run one active case or stage at a time and advance only after activation, artifact, verifier, and judgment gates are satisfied.",
+  "autonomyEvidence": [
+    "mailbox activation",
+    "mailbox reply",
+    "required artifacts",
+    "judgment verdict"
+  ],
+  "autonomyLimits": [
+    "cannot dispatch parallel active cases",
+    "cannot advance without judgment verdict",
+    "cannot use pane text as final proof"
+  ],
   "signals": {
     "transitionStyle": [
       "strict-sequential"

@@ -36,7 +36,8 @@ The orchestrator is run-scoped. It can stop, pause, rerun, or advance the statio
 ## Specialization Candidates
 
 - `strict-sequential`: one case or stage active at a time; no advance before judgment passes.
-- `recovery`: failure goes to provider repair, install/deploy verification, then rerun. This depends on future provider-side role machines.
+- `recovery-rerun`: failure evidence routes to retry, rerun, pause, provider handoff, deploy verification, or stop.
+- `parallel-capacity`: dispatches bounded runner candidates or lanes while preserving identity and deferring winner selection to judgment.
 - `human-gated`: pauses at human-owned checkpoints and requires checkpoint evidence before continuing.
 - `multi-stage`: dispatches ordered stage contracts and prevents a runner from continuing into later stages.
 

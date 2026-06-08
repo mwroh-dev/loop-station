@@ -39,6 +39,7 @@ Judgment is usually attempt-scoped. It owns verdict production for one attempt o
 - `artifact-contract`: validates required artifacts, JSON parseability, schemas, and provenance.
 - `process-evidence`: checks whether the runner used the permitted skill/runtime boundary.
 - `comparative`: compares multiple runner candidates and selects a winner or declares no pass.
+- `verifier-backed`: evaluates verifier output alongside schemas, provenance, identity, and freshness.
 - `challenge-review`: reviews a provisional pass and looks for weak evidence before provider or rerun gates.
 
 ## Minimum Preset Fields

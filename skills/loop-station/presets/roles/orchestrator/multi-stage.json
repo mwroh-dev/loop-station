@@ -1,11 +1,24 @@
 {
   "id": "orchestrator.multi-stage",
   "role": "orchestrator",
+  "roleFamily": "manager",
   "title": "Multi-Stage Orchestrator",
   "inherits": "orchestrator.shared",
   "level": 3,
+  "autonomyLevel": 2,
   "specialization": "multi-stage",
   "purpose": "Dispatch ordered stage contracts one at a time and prevent a runner from continuing into unassigned stages.",
+  "autonomyEvidence": [
+    "stage contract",
+    "active stage identity",
+    "runner metadata",
+    "judgment verdict"
+  ],
+  "autonomyLimits": [
+    "cannot skip stage gates",
+    "cannot open later stages before the active stage closes",
+    "cannot advance from runner self-report alone"
+  ],
   "signals": {
     "transitionStyle": [
       "multi-stage",

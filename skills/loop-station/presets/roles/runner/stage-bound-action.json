@@ -1,11 +1,23 @@
 {
   "id": "runner.stage-bound-action",
   "role": "runner",
+  "roleFamily": "performer",
   "title": "Stage-Bound Action Runner",
   "inherits": "runner.shared",
   "level": 3,
+  "autonomyLevel": 2,
   "specialization": "stage-bound-action",
   "purpose": "Execute exactly one declared stage through the allowed boundary, write stage artifacts, and stop before any later stage.",
+  "autonomyEvidence": [
+    "assigned stage contract",
+    "allowed runtime boundary",
+    "stage artifacts"
+  ],
+  "autonomyLimits": [
+    "cannot infer later stages",
+    "cannot advance station state",
+    "cannot broaden task scope"
+  ],
   "signals": {
     "workUnitShape": [
       "ordered-stage"

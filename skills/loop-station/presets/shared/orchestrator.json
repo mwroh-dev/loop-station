@@ -1,9 +1,22 @@
 {
   "id": "orchestrator.shared",
   "role": "orchestrator",
+  "roleFamily": "manager",
   "title": "Shared Orchestrator Traits",
   "level": 3,
+  "autonomyLevel": 2,
   "purpose": "Own station state transitions, dispatch gates, pause/rerun decisions, and handoff boundaries without performing model-owned work.",
+  "autonomyEvidence": [
+    "active dispatch identity",
+    "activation evidence",
+    "required artifacts",
+    "judgment verdict"
+  ],
+  "autonomyLimits": [
+    "cannot execute runner work",
+    "cannot fabricate model artifacts",
+    "cannot skip gates without explicit policy and evidence"
+  ],
   "authority": [
     "track_active_run_case_stage_attempt_message",
     "dispatch_bounded_task_envelopes",
