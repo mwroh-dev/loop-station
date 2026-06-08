@@ -7,6 +7,7 @@
     "loop-station": "./bin/loop-station"
   },
   "scripts": {
+    "generate:presets": "node skills/loop-station/presets/generate.js",
     "test": "node --test --test-concurrency=1 test/*.test.js skills/loop-station/assets/harness-template/test/*.test.js",
     "validate:template": "node skills/loop-station/assets/harness-template/bin/station validate",
     "smoke:template": "node skills/loop-station/assets/harness-template/bin/station smoke-run-one"

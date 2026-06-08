@@ -1,0 +1,88 @@
+{
+  "id": "runner.parallel-candidate",
+  "role": "runner",
+  "roleFamily": "performer",
+  "title": "Parallel Candidate Runner",
+  "inherits": "runner.shared",
+  "level": 3,
+  "autonomyLevel": 4,
+  "specialization": "parallel-candidate",
+  "purpose": "Produce one bounded candidate output for the same contract while preserving candidate identity, provenance, and artifact isolation.",
+  "autonomyEvidence": [
+    "candidate id",
+    "shared task contract",
+    "candidate output manifest",
+    "candidate provenance"
+  ],
+  "autonomyLimits": [
+    "cannot compare candidates",
+    "cannot declare winner",
+    "cannot read or merge sibling candidate artifacts"
+  ],
+  "signals": {
+    "workUnitShape": [
+      "parallel-candidate"
+    ],
+    "runtimeBoundary": [
+      "public-skill-only",
+      "allowed-runtime-call"
+    ],
+    "mutationBoundary": [
+      "consumer-output",
+      "no-mutation"
+    ]
+  },
+  "authority": {
+    "adds": [
+      "execute_one_candidate",
+      "write_candidate_artifacts",
+      "preserve_candidate_identity"
+    ],
+    "forbids": [
+      "candidate_comparison",
+      "winner_claim",
+      "sibling_candidate_artifact_merge"
+    ]
+  },
+  "artifacts": {
+    "required": [
+      "runner-report.md",
+      "runner-metadata.json",
+      "output-manifest.json",
+      "candidate-manifest.json"
+    ],
+    "provenanceRequired": true
+  },
+  "recommendation": {
+    "defaultConfidence": "medium",
+    "preferredWhen": [
+      "workUnitShape == parallel-candidate",
+      "comparisonNeed in [runner-candidates,judge-panel]"
+    ],
+    "avoidWhen": [
+      "comparisonNeed == none",
+      "workUnitShape == human-checkpoint"
+    ]
+  },
+  "compatibility": {
+    "requiresOrchestratorCapabilities": [
+      "parallel_lane_capacity_gate",
+      "candidate_identity_gate"
+    ],
+    "compatibleOrchestratorCapabilities": [
+      "parallel_lane_capacity_gate",
+      "comparative_judgment_gate"
+    ],
+    "compatibleJudgmentCapabilities": [
+      "comparative",
+      "challenge_review"
+    ]
+  },
+  "promptReference": "prompts/roles/runner/parallel-candidate.md",
+  "selfReviewChecklist": [
+    "Candidate identity is visible in all produced artifacts.",
+    "The runner does not inspect sibling candidates.",
+    "The runner does not compare or rank candidates.",
+    "Artifacts are isolated to this candidate assignment."
+  ]
+}

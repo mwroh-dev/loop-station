@@ -1,0 +1,92 @@
+{
+  "id": "judgment.challenge-review",
+  "role": "judgment",
+  "roleFamily": "evaluator",
+  "title": "Challenge Review Judgment",
+  "inherits": "judgment.shared",
+  "level": 3,
+  "autonomyLevel": 4,
+  "specialization": "challenge-review",
+  "purpose": "Perform a second-pass review of provisional pass, comparative, or high-risk verdict evidence before the orchestrator advances.",
+  "autonomyEvidence": [
+    "provisional verdict",
+    "runner artifacts",
+    "comparison matrix when present",
+    "risk or challenge criteria"
+  ],
+  "autonomyLimits": [
+    "cannot perform missing runner work",
+    "cannot silently override the primary verdict",
+    "cannot mutate station state"
+  ],
+  "signals": {
+    "evidenceStrictness": [
+      "schema-validated",
+      "provenance-required",
+      "verifier-required"
+    ],
+    "comparisonNeed": [
+      "challenge-review",
+      "judge-panel",
+      "runner-candidates"
+    ],
+    "failurePath": [
+      "retry",
+      "provider-handoff",
+      "stop"
+    ]
+  },
+  "authority": {
+    "adds": [
+      "challenge_provisional_verdict",
+      "validate_high_risk_pass",
+      "write_challenge_verdict"
+    ],
+    "forbids": [
+      "silent_primary_verdict_override",
+      "runner_artifact_fabrication"
+    ]
+  },
+  "artifacts": {
+    "required": [
+      "eval-report.md",
+      "eval-verdict.json",
+      "challenge-report.md"
+    ],
+    "provenanceRequired": true
+  },
+  "recommendation": {
+    "defaultConfidence": "medium",
+    "preferredWhen": [
+      "comparisonNeed in [challenge-review,judge-panel]",
+      "failurePath in [provider-handoff,retry]"
+    ],
+    "avoidWhen": [
+      "comparisonNeed == none",
+      "requiredArtifacts.length == 0"
+    ]
+  },
+  "compatibility": {
+    "requiresRunnerCapabilities": [
+      "runner_artifacts",
+      "provenance"
+    ],
+    "compatibleRunnerCapabilities": [
+      "artifact_producing",
+      "parallel_candidate",
+      "stage_bound_action"
+    ],
+    "compatibleOrchestratorCapabilities": [
+      "comparative_judgment_gate",
+      "judgment_required_advance",
+      "retry_rerun_gate"
+    ]
+  },
+  "promptReference": "prompts/roles/judgment/challenge-review.md",
+  "selfReviewChecklist": [
+    "The challenge input is a provisional verdict or high-risk pass.",
+    "The challenge verdict records what changed or stayed accepted.",
+    "The judge does not fabricate runner artifacts.",
+    "The orchestrator still owns final state transition."
+  ]
+}

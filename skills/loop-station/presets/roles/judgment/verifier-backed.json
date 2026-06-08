@@ -1,0 +1,91 @@
+{
+  "id": "judgment.verifier-backed",
+  "role": "judgment",
+  "roleFamily": "evaluator",
+  "title": "Verifier-Backed Judgment",
+  "inherits": "judgment.shared",
+  "level": 3,
+  "autonomyLevel": 4,
+  "specialization": "verifier-backed",
+  "purpose": "Evaluate runner artifacts together with verifier output, schemas, provenance, identity, and freshness before writing a verdict.",
+  "autonomyEvidence": [
+    "verifier report",
+    "artifact schemas",
+    "runner artifact provenance",
+    "active dispatch identity"
+  ],
+  "autonomyLimits": [
+    "cannot treat verifier output as fresh when identity mismatches",
+    "cannot repair failing artifacts",
+    "cannot override missing required artifacts"
+  ],
+  "signals": {
+    "evidenceStrictness": [
+      "schema-validated",
+      "provenance-required",
+      "verifier-required"
+    ],
+    "comparisonNeed": [
+      "none"
+    ],
+    "failurePath": [
+      "retry",
+      "provider-handoff",
+      "deploy-verify",
+      "stop"
+    ]
+  },
+  "authority": {
+    "adds": [
+      "validate_verifier_output",
+      "validate_artifact_freshness",
+      "write_verifier_backed_verdict"
+    ],
+    "forbids": [
+      "accept_stale_verifier_output",
+      "repair_missing_artifact"
+    ]
+  },
+  "artifacts": {
+    "required": [
+      "eval-report.md",
+      "eval-verdict.json",
+      "reports/verification.json"
+    ],
+    "provenanceRequired": true
+  },
+  "recommendation": {
+    "defaultConfidence": "high",
+    "preferredWhen": [
+      "evidenceStrictness == verifier-required",
+      "requiredArtifacts includes reports/verification.json"
+    ],
+    "avoidWhen": [
+      "comparisonNeed in [runner-candidates,judge-panel]",
+      "requiredArtifacts.length == 0"
+    ]
+  },
+  "compatibility": {
+    "requiresRunnerCapabilities": [
+      "runner_artifacts",
+      "skill_runtime_evidence",
+      "provenance"
+    ],
+    "compatibleRunnerCapabilities": [
+      "artifact_producing",
+      "stage_bound_action"
+    ],
+    "compatibleOrchestratorCapabilities": [
+      "judgment_required_advance",
+      "retry_rerun_gate",
+      "stage_order_gate"
+    ]
+  },
+  "promptReference": "prompts/roles/judgment/verifier-backed.md",
+  "selfReviewChecklist": [
+    "Verifier output identity matches the active dispatch.",
+    "Artifact schema and provenance checks still run.",
+    "A failing verifier produces a verdict, not a repair.",
+    "Freshness is checked before pass."
+  ]
+}

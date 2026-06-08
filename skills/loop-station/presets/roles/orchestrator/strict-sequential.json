@@ -1,0 +1,88 @@
+{
+  "id": "orchestrator.strict-sequential",
+  "role": "orchestrator",
+  "roleFamily": "manager",
+  "title": "Strict Sequential Orchestrator",
+  "inherits": "orchestrator.shared",
+  "level": 3,
+  "autonomyLevel": 2,
+  "specialization": "strict-sequential",
+  "purpose": "Run one active case or stage at a time and advance only after activation, artifact, verifier, and judgment gates are satisfied.",
+  "autonomyEvidence": [
+    "mailbox activation",
+    "mailbox reply",
+    "required artifacts",
+    "judgment verdict"
+  ],
+  "autonomyLimits": [
+    "cannot dispatch parallel active cases",
+    "cannot advance without judgment verdict",
+    "cannot use pane text as final proof"
+  ],
+  "signals": {
+    "transitionStyle": [
+      "strict-sequential"
+    ],
+    "failurePath": [
+      "stop",
+      "retry"
+    ],
+    "workUnitShape": [
+      "single-case",
+      "repeated-case",
+      "ordered-stage"
+    ]
+  },
+  "authority": {
+    "adds": [
+      "single_active_dispatch",
+      "judgment_required_advance",
+      "deterministic_retry_limit"
+    ],
+    "forbids": [
+      "parallel_active_case_dispatch",
+      "advance_without_judgment_verdict"
+    ]
+  },
+  "artifacts": {
+    "required": [
+      "dispatch-request.json",
+      "mailbox-started.json",
+      "mailbox-reply.json",
+      "eval-verdict.json"
+    ],
+    "provenanceRequired": true
+  },
+  "recommendation": {
+    "defaultConfidence": "high",
+    "preferredWhen": [
+      "workUnitShape in [single-case,repeated-case,ordered-stage]",
+      "comparisonNeed == none"
+    ],
+    "avoidWhen": [
+      "transitionStyle == human-gated",
+      "comparisonNeed in [runner-candidates,judge-panel]"
+    ]
+  },
+  "compatibility": {
+    "requiresRunnerCapabilities": [
+      "bounded_task_execution",
+      "runner_artifacts"
+    ],
+    "compatibleRunnerCapabilities": [
+      "artifact_producing",
+      "stage_bound_action"
+    ],
+    "compatibleJudgmentCapabilities": [
+      "artifact_contract",
+      "process_evidence"
+    ]
+  },
+  "promptReference": "prompts/roles/orchestrator/strict-sequential.md",
+  "selfReviewChecklist": [
+    "Only one active dispatch can be open.",
+    "Every advance is tied to a current judgment verdict.",
+    "Missing activation or stale artifacts stop or retry instead of advancing.",
+    "Runner self-report is never treated as final completion."
+  ]
+}

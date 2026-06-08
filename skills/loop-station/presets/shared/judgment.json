@@ -1,0 +1,88 @@
+{
+  "id": "judgment.shared",
+  "role": "judgment",
+  "roleFamily": "evaluator",
+  "title": "Shared Judgment Traits",
+  "level": 3,
+  "autonomyLevel": 3,
+  "purpose": "Evaluate runner output and process evidence for the active dispatch, then write verdict artifacts without executing runner work or mutating station state.",
+  "autonomyEvidence": [
+    "runner artifacts",
+    "runner metadata",
+    "artifact identity and freshness",
+    "verdict schema"
+  ],
+  "autonomyLimits": [
+    "cannot execute missing runner work",
+    "cannot repair provider source",
+    "cannot directly advance station state"
+  ],
+  "authority": [
+    "evaluate_runner_artifacts",
+    "evaluate_process_evidence",
+    "validate_artifact_identity_and_freshness",
+    "write_judgment_artifacts",
+    "recommend_pass_fail_rerun_provider_or_human_review"
+  ],
+  "forbiddenResponsibilities": [
+    "runner_task_execution",
+    "runner_artifact_fabrication",
+    "station_advance",
+    "provider_repair",
+    "case_input_patch",
+    "consumer_generated_artifact_patch",
+    "chat_only_completion_acceptance"
+  ],
+  "requiredEvidence": [
+    "activeRunId",
+    "caseId",
+    "stageId",
+    "attempt",
+    "messageId",
+    "runner-report.md",
+    "runner-metadata.json",
+    "output-manifest.json",
+    "eval-report.md",
+    "eval-verdict.json"
+  ],
+  "lifecycleDefaults": [
+    "attempt-scoped"
+  ],
+  "recommendationSignals": {
+    "evidenceStrictness": [
+      "artifacts-only",
+      "schema-validated",
+      "provenance-required",
+      "verifier-required",
+      "human-evidence-required"
+    ],
+    "comparisonNeed": [
+      "none",
+      "runner-candidates",
+      "challenge-review",
+      "judge-panel"
+    ]
+  },
+  "scoringHints": {
+    "authorityFitMinimum": 20,
+    "evidenceFitRequires": [
+      "authoritative runner artifacts",
+      "artifact freshness",
+      "verdict schema"
+    ],
+    "hardRejects": [
+      "performs missing runner work",
+      "creates runner artifacts",
+      "mutates station state",
+      "accepts chat-only self report"
+    ]
+  },
+  "selfReviewChecklist": [
+    "Defines authoritative artifact inputs.",
+    "Checks run, case, stage, attempt, message, and agent identity when available.",
+    "Separates output quality failure from process-boundary failure.",
+    "Writes structured verdict artifacts.",
+    "Recommends transitions without directly mutating station state.",
+    "Does not fill in missing runner work."
+  ]
+}

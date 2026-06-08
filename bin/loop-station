@@ -9,6 +9,15 @@ import { assertConsumerSafeSetupSpec, projectLocalLoopStationSkillRoot as localS
 import { discoverSkillProfile } from "../skills/loop-station/assets/harness-template/src/skill-contract-discovery.js";
 import { materializeAgentsFromLayout, normalizeLayoutConfig } from "../skills/loop-station/assets/harness-template/src/layout-config.js";
 import { profileDefinition } from "../skills/loop-station/assets/harness-template/src/profiles.js";
+import {
+  analyzePresetRecommendationCompatibility,
+  applyPresetSelections,
+  explainRoleRecommendation,
+  loadPresetCatalog,
+  materializePresetRecommendation,
+  recommendRolePresets
+} from "../skills/loop-station/presets/catalog.js";
+import { ROLE_TYPE_ORDER } from "../skills/loop-station/presets/definitions.js";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const TEMPLATE = join(ROOT, "skills", "loop-station", "assets", "harness-template");
@@ -28,7 +37,7 @@ try {
   } else if (command === "init") {
     init(args);
   } else if (command === "interview") {
-    interview();
+    interview(args);
   } else {
     throw new Error(`Unknown command: ${command}`);
   }
@@ -49,6 +58,17 @@ async function setup(args) {
   assertConsumerSafeSetupSpec(project, spec);
   const seeded = seedSetupSpec(project, spec);
   scaffoldSetupStageSkills(project, seeded);
+  const presetCatalog = loadPresetCatalog();
+  const presetSignals = setupPresetSignals(seeded);
+  const recommendedPresets = recommendRolePresets(presetSignals, presetCatalog);
+  const presetRecommendation = specPath
+    ? applyPresetSelections(recommendedPresets, seeded.presetSelections)
+    : await promptPresetSelections(recommendedPresets, presetSignals);
+  const compatibilityReport = analyzePresetRecommendationCompatibility({
+    recommendation: presetRecommendation,
+    signals: presetSignals
+  });
+  printPresetCompatibilityReport(compatibilityReport);
 
   if (replace && existsSync(stationRoot)) {
     rmSync(stationRoot, { recursive: true, force: true });
@@ -62,6 +82,15 @@ async function setup(args) {
 
   const config = buildSetupStationConfig(project, seeded);
   writeFileSync(join(stationRoot, "station.json"), `${JSON.stringify(config, null, 2)}\n`);
+  const materialized = materializePresetRecommendation({
+    stationRoot,
+    recommendation: presetRecommendation,
+    signals: presetSignals,
+    catalog: presetCatalog,
+    recommendationId: "setup-default"
+  });
+  printPresetRecommendationSummary(materialized);
+  console.log(`Materialized role preset decisions at ${join(stationRoot, "presets", "recommendation.json")} (${Object.keys(materialized.roles).length} roles)`);
   console.log(`Configured loop-station setup at ${stationRoot}`);
 }
 
@@ -124,7 +153,7 @@ function init(args) {
   console.log(`Initialized loop-station harness at ${destination}`);
 }
 
-function interview() {
+function interview(args = []) {
   console.log(`Loop Station interview draft:
 
 1. Which loop profile fits this workflow: evaluation-loop, recovery-loop, installation-loop, or action-pipeline?
@@ -145,6 +174,122 @@ Use loop-station install-skill to place the skill in the project-local .codex/sk
 Use loop-station setup to turn the approved setup proposal into .loop-station/station.json after the local skill install exists.
 The runtime always stays visible: trigger from the current Codex session, then attach or open a visible Terminal-backed tmux runtime.
 For normal installs, preserve existing .loop-station. For destructive test refreshes, use loop-station install --replace --project <dir>.`);
+
+  const specPath = readOption(args, "--spec");
+  if (!specPath) {
+    console.log(`
+Use loop-station interview --spec <json-file> to preview role preset recommendations before setup writes .loop-station.`);
+    return;
+  }
+
+  const project = resolve(readOption(args, "--project") ?? process.cwd());
+  const spec = JSON.parse(readFileSync(resolve(specPath), "utf8"));
+  const seeded = seedSetupSpec(project, spec);
+  const signals = setupPresetSignals(seeded);
+  const recommendation = recommendRolePresets(signals, loadPresetCatalog());
+  printPresetRecommendationPreview({ recommendation, signals });
+}
+
+async function promptPresetSelections(recommendation, signals) {
+  if (!process.stdin.isTTY) {
+    throw new Error("loop-station setup requires --spec in non-interactive mode");
+  }
+  const rl = createInterface({ input, output });
+  const selections = { roles: {} };
+  try {
+    for (const role of ROLE_TYPE_ORDER) {
+      const bundle = recommendation[role];
+      const candidates = [bundle.selected, ...(bundle.alternates ?? [])].filter(Boolean);
+      if (candidates.length === 0) {
+        throw new Error(`No recommended presets or alternates found for role: ${role}`);
+      }
+      output.write(`\n${formatRolePresetRecommendation({ role, bundle, signals, includeQuestion: true })}\n`);
+      const answer = await rl.question(`Choose ${role} preset [1]: `);
+      const selection = parsePresetSelection(answer, candidates);
+      selections.roles[role] = selection.preset.id;
+    }
+  } finally {
+    rl.close();
+  }
+  return applyPresetSelections(recommendation, selections);
+}
+
+function printPresetRecommendationPreview({ recommendation, signals }) {
+  console.log("\nRole preset recommendation preview:");
+  console.log("Preview only: this is not user approval, not final setup, and not station materialization.");
+  console.log("Do not create or modify .loop-station from this preview alone. Ask the user to approve the role preset decisions before running loop-station setup.");
+  for (const role of ROLE_TYPE_ORDER) {
+    console.log("");
+    console.log(formatRolePresetRecommendation({ role, bundle: recommendation[role], signals, includeQuestion: false }));
+  }
+}
+
+function formatRolePresetRecommendation({ role, bundle, signals, includeQuestion }) {
+  const selected = bundle?.selected;
+  const candidates = [selected, ...(bundle?.alternates ?? [])].filter(Boolean);
+  const lines = [];
+  lines.push(`${roleLabel(role)} preset`);
+  if (includeQuestion) lines.push(rolePresetQuestion(role));
+  if (!selected) {
+    lines.push("No recommendable preset is available for this role.");
+    return lines.join("\n");
+  }
+  lines.push(`Recommended: ${selected.preset.title} (${selected.preset.id})`);
+  lines.push(`Reason: ${explainRoleRecommendation(role, selected, signals)}`);
+  lines.push(`Autonomy level: ${selected.preset.autonomyLevel}; maturity level: ${selected.preset.level}`);
+  lines.push(`Confidence: ${selected.confidence}; score: ${selected.score}`);
+  lines.push("Candidates:");
+  candidates.forEach((candidate, index) => {
+    const marker = index === 0 ? "Recommended" : "Alternate";
+    lines.push(`${index + 1}. ${candidate.preset.title} (${candidate.preset.id}) - ${marker}; confidence ${candidate.confidence}; score ${candidate.score}`);
+    for (const reason of candidate.reasons ?? []) {
+      lines.push(`   - ${reason}`);
+    }
+  });
+  return lines.join("\n");
+}
+
+function roleLabel(role) {
+  if (role === "orchestrator") return "Orchestrator";
+  if (role === "runner") return "Runner";
+  if (role === "judgment") return "Judgment";
+  return role;
+}
+
+function rolePresetQuestion(role) {
+  if (role === "orchestrator") {
+    return "Choose the orchestrator first because it owns station transition authority before runner work is accepted.";
+  }
+  if (role === "runner") {
+    return "Choose the runner next because it owns the assigned execution unit and artifact production.";
+  }
+  return "Choose judgment last because it turns runner evidence into the verdict artifacts the orchestrator gates on.";
+}
+
+function parsePresetSelection(answer, candidates) {
+  const trimmed = answer.trim();
+  if (!trimmed) return candidates[0];
+  const index = Number.parseInt(trimmed, 10);
+  if (Number.isFinite(index) && index >= 1 && index <= candidates.length) return candidates[index - 1];
+  const byId = candidates.find((candidate) => candidate.preset.id === trimmed || candidate.preset.specialization === trimmed);
+  if (byId) return byId;
+  throw new Error(`Unknown preset selection: ${answer}`);
+}
+
+function printPresetRecommendationSummary(materialized) {
+  console.log("Role preset decisions:");
+  for (const decision of materialized.decisionFlow ?? []) {
+    console.log(`- ${decision.role}: ${decision.selectedPresetId} (${decision.confidence}, ${decision.score})`);
+    console.log(`  ${decision.reason}`);
+  }
+}
+
+function printPresetCompatibilityReport(report) {
+  if (!report || report.warnings.length === 0) return;
+  console.log("Role preset compatibility warnings:");
+  for (const warning of report.warnings) {
+    console.log(`- ${warning.message}`);
+  }
 }
 
 function readOption(args, name) {
@@ -250,6 +395,7 @@ function seedSetupSpec(project, inputSpec = {}) {
       allowDetached: inputSpec.runtimePolicy?.allowDetached === true,
       allowGenericActionStages: inputSpec.runtimePolicy?.allowGenericActionStages === true
     },
+    presetSelections: normalizePresetSelections(inputSpec.presetSelections ?? {}),
     codexRuntime: normalizeCodexRuntimeSpec(inputSpec.codexRuntime ?? {
       invokerDefault: readCodexInvokerDefaults()
     })
@@ -450,6 +596,117 @@ function presetRoleCounts(spec) {
   return counts;
 }
 
+function setupPresetSignals(spec) {
+  const hasStages = spec.stageContracts.length > 0;
+  const hasHumanCheckpoint = spec.stageContracts.some((stage) => hasStageHumanCheckpoint(stage))
+    || spec.profiles.some((profile) => (profile?.humanCheckpoints ?? []).length > 0);
+  const requiredArtifacts = unique([
+    ...spec.stageContracts.flatMap((stage) => stage.requiredArtifacts ?? []),
+    ...spec.profiles.flatMap((profile) => profile?.requiredEvidence ?? []),
+    "runner-report.md",
+    "runner-metadata.json",
+    "output-manifest.json",
+    "eval-report.md",
+    "eval-verdict.json"
+  ]);
+  const evidenceStrictness = unique([
+    requiredArtifacts.length > 0 ? "artifacts-only" : null,
+    spec.stageContracts.some((stage) => Object.keys(stage.artifactSchemas ?? {}).length > 0) ? "schema-validated" : null,
+    "provenance-required",
+    spec.profiles.some((profile) => (profile?.requiredEvidence ?? []).some((item) => /verification\.json/i.test(item))) ? "verifier-required" : null,
+    hasHumanCheckpoint ? "human-evidence-required" : null
+  ].filter(Boolean));
+  const workUnitShape = unique([
+    hasHumanCheckpoint ? "human-checkpoint" : null,
+    hasStages ? "ordered-stage" : null,
+    !hasStages && (spec.roles.runner ?? 0) > 1 ? "repeated-case" : null,
+    !hasStages ? "single-case" : null,
+    spec.loopType === "evaluation-only" ? "parallel-candidate" : null
+  ].filter(Boolean));
+  const transitionStyle = unique([
+    hasHumanCheckpoint ? "human-gated" : null,
+    hasStages ? "multi-stage" : null,
+    ["skill-improvement", "recovery-loop", "installation-loop"].includes(spec.loopType) ? "recovery" : null,
+    "strict-sequential"
+  ].filter(Boolean));
+  const failurePath = unique([
+    hasHumanCheckpoint ? "human-pause" : null,
+    ["skill-improvement", "recovery-loop", "installation-loop"].includes(spec.loopType) ? "provider-handoff" : null,
+    ["skill-improvement", "recovery-loop", "installation-loop"].includes(spec.loopType) ? "deploy-verify" : null,
+    "retry",
+    "stop"
+  ].filter(Boolean));
+  const runtimeBoundary = unique([
+    hasHumanCheckpoint ? "human-owned-runtime" : null,
+    spec.profiles.some((profile) => (profile?.allowedPublicRuntimeCalls ?? []).length > 0) ? "allowed-runtime-call" : null,
+    "public-skill-only"
+  ].filter(Boolean));
+  const hasParallelCandidates = spec.loopType === "evaluation-only" && (spec.roles.runner ?? 0) > 1;
+  const comparisonNeed = unique([
+    hasParallelCandidates ? "runner-candidates" : "none"
+  ]);
+  const recoveryFlow = ["skill-improvement", "recovery-loop", "installation-loop"].includes(spec.loopType);
+  const hasVerifier = evidenceStrictness.includes("verifier-required")
+    || requiredArtifacts.some((artifact) => /verification\.json/i.test(artifact));
+  return {
+    workUnitShape,
+    evidenceStrictness,
+    transitionStyle,
+    mutationBoundary: ["consumer-output"],
+    failurePath,
+    comparisonNeed,
+    runtimeBoundary,
+    requiredArtifacts,
+    requestedAutonomy: {
+      orchestrator: hasParallelCandidates ? 4 : recoveryFlow || hasHumanCheckpoint ? 3 : 2,
+      runner: hasParallelCandidates ? 4 : hasHumanCheckpoint ? 3 : 2,
+      judgment: hasParallelCandidates || hasVerifier ? 4 : hasHumanCheckpoint ? 3 : 2
+    },
+    peerCapabilities: setupPeerCapabilities({ hasStages, hasHumanCheckpoint, hasParallelCandidates, hasVerifier, recoveryFlow, comparisonNeed })
+  };
+}
+
+function setupPeerCapabilities({ hasStages, hasHumanCheckpoint, hasParallelCandidates, hasVerifier, recoveryFlow, comparisonNeed }) {
+  return unique([
+    "single_active_dispatch",
+    "judgment_required_advance",
+    "deterministic_retry_limit",
+    "runner_artifacts",
+    "skill_runtime_evidence",
+    "provenance",
+    hasStages ? "stage_order_gate" : null,
+    hasStages ? "single_active_stage" : null,
+    hasStages ? "stage_contract_dispatch" : null,
+    hasStages ? "execute_one_stage" : null,
+    hasStages ? "stop_after_assigned_stage" : null,
+    hasHumanCheckpoint ? "human_checkpoint_pause" : null,
+    hasHumanCheckpoint ? "checkpoint_evidence_gate" : null,
+    hasHumanCheckpoint ? "resume_after_human_evidence" : null,
+    hasHumanCheckpoint ? "human_checkpoint_stop" : null,
+    hasHumanCheckpoint ? "checkpoint_evidence_recording" : null,
+    recoveryFlow ? "failure_evidence_router" : null,
+    recoveryFlow ? "retry_rerun_gate" : null,
+    recoveryFlow ? "provider_handoff_gate" : null,
+    hasParallelCandidates ? "parallel_lane_capacity_gate" : null,
+    hasParallelCandidates ? "candidate_identity_gate" : null,
+    hasParallelCandidates ? "comparative_judgment_gate" : null,
+    comparisonNeed.includes("runner-candidates") ? "candidate_output_identity" : null,
+    hasVerifier ? "verifier_backed" : null
+  ].filter(Boolean));
+}
+
+function hasStageHumanCheckpoint(stage) {
+  return (stage?.phaseContracts ?? []).some((phase) => phase?.allowedActor === "human_user" || phase?.checkpoint)
+    || (stage?.humanCheckpoints ?? []).length > 0
+    || (stage?.requiredEvidence ?? []).some((item) => /human|checkpoint/i.test(item));
+}
+
+function normalizePresetSelections(selections) {
+  return {
+    roles: typeof selections.roles === "object" && selections.roles !== null ? selections.roles : {}
+  };
+}
+
 function normalizeLoopType(loopType) {
   const allowed = new Set([
     "skill-benchmark",
@@ -466,6 +723,10 @@ function normalizeLoopType(loopType) {
 function normalizeCount(value) {
   const count = Number.parseInt(String(value ?? 0), 10);
   return Number.isFinite(count) && count > 0 ? count : 0;
+}
+
+function unique(values) {
+  return [...new Set(values)];
 }
 
 function scaffoldSetupStageSkills(project, spec) {
@@ -546,7 +807,7 @@ Usage:
   loop-station install [--project <dir>] [--replace]
   loop-station setup [--project <dir>] [--spec <json-file>] [--replace]
   loop-station init <dir> [--force]
-  loop-station interview
+  loop-station interview [--project <dir>] [--spec <json-file>]
 
 Notes:
   install-skill copies the skill bundle into <project>/.codex/skills/loop-station only.

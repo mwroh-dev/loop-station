@@ -1,0 +1,89 @@
+{
+  "id": "judgment.process-evidence",
+  "role": "judgment",
+  "roleFamily": "evaluator",
+  "title": "Process-Evidence Judgment",
+  "inherits": "judgment.shared",
+  "level": 3,
+  "autonomyLevel": 3,
+  "specialization": "process-evidence",
+  "purpose": "Evaluate whether the runner stayed inside the allowed skill, runtime, mutation, and checkpoint boundaries while producing artifacts.",
+  "autonomyEvidence": [
+    "runner metadata",
+    "skill runtime evidence",
+    "mutation boundary evidence",
+    "checkpoint evidence when required"
+  ],
+  "autonomyLimits": [
+    "cannot execute missing process steps",
+    "cannot accept output quality as process evidence",
+    "cannot advance station state"
+  ],
+  "signals": {
+    "evidenceStrictness": [
+      "provenance-required",
+      "verifier-required",
+      "human-evidence-required"
+    ],
+    "comparisonNeed": [
+      "none"
+    ],
+    "failurePath": [
+      "retry",
+      "human-pause",
+      "stop"
+    ]
+  },
+  "authority": {
+    "adds": [
+      "validate_runtime_boundary",
+      "validate_mutation_boundary",
+      "write_process_compliance_verdict"
+    ],
+    "forbids": [
+      "accept_output_quality_without_process_evidence",
+      "complete_missing_runner_evidence"
+    ]
+  },
+  "artifacts": {
+    "required": [
+      "eval-report.md",
+      "eval-verdict.json"
+    ],
+    "provenanceRequired": true
+  },
+  "recommendation": {
+    "defaultConfidence": "medium",
+    "preferredWhen": [
+      "runtimeBoundary != unrestricted",
+      "mutationBoundary in [consumer-output,no-mutation]",
+      "evidenceStrictness in [provenance-required,verifier-required,human-evidence-required]"
+    ],
+    "avoidWhen": [
+      "requiredArtifacts.length == 0",
+      "runtimeBoundary == unrestricted"
+    ]
+  },
+  "compatibility": {
+    "requiresRunnerCapabilities": [
+      "skill_runtime_evidence",
+      "provenance"
+    ],
+    "compatibleRunnerCapabilities": [
+      "artifact_producing",
+      "stage_bound_action",
+      "human_checkpoint"
+    ],
+    "compatibleOrchestratorCapabilities": [
+      "judgment_required_advance",
+      "checkpoint_evidence_gate"
+    ]
+  },
+  "promptReference": "prompts/roles/judgment/process-evidence.md",
+  "selfReviewChecklist": [
+    "Allowed runtime and mutation boundaries are named.",
+    "Process-boundary failure is separate from output-quality failure.",
+    "Human checkpoint evidence is verified when required.",
+    "The judge does not execute missing process steps."
+  ]
+}

@@ -1,0 +1,90 @@
+{
+  "id": "orchestrator.recovery-rerun",
+  "role": "orchestrator",
+  "roleFamily": "manager",
+  "title": "Recovery Rerun Orchestrator",
+  "inherits": "orchestrator.shared",
+  "level": 3,
+  "autonomyLevel": 3,
+  "specialization": "recovery-rerun",
+  "purpose": "Route failed or blocked attempts through retry, rerun, pause, provider handoff, or stop policy based on current failure evidence.",
+  "autonomyEvidence": [
+    "failed eval-verdict.json",
+    "runner-metadata.json",
+    "retry history",
+    "provider response evidence when required"
+  ],
+  "autonomyLimits": [
+    "cannot patch provider source",
+    "cannot retry past configured policy",
+    "cannot mark provider repair complete without required evidence"
+  ],
+  "signals": {
+    "transitionStyle": [
+      "recovery",
+      "strict-sequential"
+    ],
+    "failurePath": [
+      "retry",
+      "provider-handoff",
+      "deploy-verify",
+      "stop"
+    ],
+    "workUnitShape": [
+      "single-case",
+      "repeated-case"
+    ]
+  },
+  "authority": {
+    "adds": [
+      "failure_evidence_router",
+      "retry_rerun_gate",
+      "provider_handoff_gate"
+    ],
+    "forbids": [
+      "provider_source_patch",
+      "rerun_without_failure_evidence"
+    ]
+  },
+  "artifacts": {
+    "required": [
+      "eval-verdict.json",
+      "runner-metadata.json",
+      "provider-response.json"
+    ],
+    "provenanceRequired": true
+  },
+  "recommendation": {
+    "defaultConfidence": "high",
+    "preferredWhen": [
+      "transitionStyle == recovery",
+      "failurePath in [provider-handoff,deploy-verify,retry]"
+    ],
+    "avoidWhen": [
+      "comparisonNeed in [runner-candidates,judge-panel]",
+      "workUnitShape == human-checkpoint"
+    ]
+  },
+  "compatibility": {
+    "requiresRunnerCapabilities": [
+      "runner_artifacts",
+      "skill_runtime_evidence"
+    ],
+    "compatibleRunnerCapabilities": [
+      "artifact_producing",
+      "stage_bound_action"
+    ],
+    "compatibleJudgmentCapabilities": [
+      "artifact_contract",
+      "process_evidence",
+      "verifier_backed"
+    ]
+  },
+  "promptReference": "prompts/roles/orchestrator/recovery-rerun.md",
+  "selfReviewChecklist": [
+    "Failure evidence is current and tied to the active dispatch.",
+    "Retry and rerun policy is bounded.",
+    "Provider handoff is requested without patching provider source.",
+    "Deploy verification evidence is required before rerun when configured."
+  ]
+}

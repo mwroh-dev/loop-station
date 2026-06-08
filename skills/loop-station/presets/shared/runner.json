@@ -1,0 +1,90 @@
+{
+  "id": "runner.shared",
+  "role": "runner",
+  "roleFamily": "performer",
+  "title": "Shared Runner Traits",
+  "level": 3,
+  "autonomyLevel": 2,
+  "purpose": "Execute exactly one assigned case, stage, or task through the allowed public boundary and produce required runner-owned artifacts.",
+  "autonomyEvidence": [
+    "assigned task envelope",
+    "allowed public skill or runtime boundary",
+    "runner artifact provenance"
+  ],
+  "autonomyLimits": [
+    "cannot make final station verdict",
+    "cannot advance station state",
+    "cannot expand into unassigned work"
+  ],
+  "authority": [
+    "execute_assigned_task",
+    "invoke_configured_public_skill_or_allowed_runtime",
+    "write_runner_artifacts",
+    "report_blocked_failed_or_unsupported_work",
+    "record_human_checkpoint_evidence_when_required"
+  ],
+  "forbiddenResponsibilities": [
+    "final_judgment",
+    "station_advance",
+    "provider_repair",
+    "case_input_patch",
+    "provider_source_patch",
+    "consumer_generated_artifact_patch",
+    "target_skill_bypass",
+    "human_checkpoint_replacement"
+  ],
+  "requiredEvidence": [
+    "messageId",
+    "agentName",
+    "phaseEvidence",
+    "skillRuntimeEvidence",
+    "runner-report.md",
+    "runner-metadata.json",
+    "output-manifest.json"
+  ],
+  "lifecycleDefaults": [
+    "attempt-scoped",
+    "stage-scoped"
+  ],
+  "recommendationSignals": {
+    "workUnitShape": [
+      "single-case",
+      "repeated-case",
+      "ordered-stage",
+      "parallel-candidate",
+      "human-checkpoint"
+    ],
+    "runtimeBoundary": [
+      "public-skill-only",
+      "allowed-runtime-call",
+      "human-owned-runtime",
+      "station-owned-runtime"
+    ],
+    "mutationBoundary": [
+      "consumer-output",
+      "no-mutation"
+    ]
+  },
+  "scoringHints": {
+    "authorityFitMinimum": 20,
+    "evidenceFitRequires": [
+      "runner artifacts",
+      "provenance",
+      "skill runtime evidence"
+    ],
+    "hardRejects": [
+      "performs final judgment",
+      "continues into unassigned stages",
+      "bypasses configured target skills",
+      "replaces human-owned checkpoints"
+    ]
+  },
+  "selfReviewChecklist": [
+    "Defines the smallest assigned unit of work.",
+    "Names the allowed public skill or runtime boundary.",
+    "Requires provenance for runner-owned artifacts.",
+    "Reports blockers through artifacts instead of chat-only status.",
+    "Stops at human-owned checkpoints when required.",
+    "Prevents judging, repairing, or advancing the station."
+  ]
+}
