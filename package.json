@@ -12,6 +12,9 @@
     "test:ci": "node --test --test-concurrency=1 test/*.test.js skills/loop-station/assets/harness-template/test/*.test.js",
     "validate:template": "node skills/loop-station/assets/harness-template/bin/station validate",
     "validate:template:ci": "node skills/loop-station/assets/harness-template/bin/station validate --skip-tools",
+    "verify:ci": "npm run test:ci && npm run validate:template:ci",
+    "verify:full": "npm test && npm run validate:template",
+    "hooks:install": "git config core.hooksPath .githooks",
     "smoke:template": "node skills/loop-station/assets/harness-template/bin/station smoke-run-one"
   },
   "engines": {
