@@ -223,10 +223,19 @@ function modelAgentCommand(agent, config) {
   return codexAgentCommand(profile);
 }
 
+const SAFE_CODEX_OPTION_PATTERN = /^[A-Za-z0-9._:-]+$/;
+
+function assertSafeCodexOption(name, value) {
+  if (!SAFE_CODEX_OPTION_PATTERN.test(String(value))) {
+    throw new Error(`Unsafe codex ${name} value for shell command: ${JSON.stringify(value)}`);
+  }
+  return value;
+}
+
 function codexAgentCommand(profile = {}) {
   const args = [];
-  if (profile.model) args.push(`-m ${profile.model}`);
-  if (profile.model_reasoning_effort) args.push(`-c model_reasoning_effort="${profile.model_reasoning_effort}"`);
+  if (profile.model) args.push(`-m ${assertSafeCodexOption("model", profile.model)}`);
+  if (profile.model_reasoning_effort) args.push(`-c model_reasoning_effort="${assertSafeCodexOption("model_reasoning_effort", profile.model_reasoning_effort)}"`);
   const prefix = args.length > 0 ? `${args.join(" ")} ` : "";
   return `CODEX_BIN="\${STATION_CODEX_BIN:-codex}"; exec "$CODEX_BIN" ${prefix}--no-alt-screen -C "$STATION_AGENT_CWD" --sandbox danger-full-access --dangerously-bypass-approvals-and-sandbox`;
 }

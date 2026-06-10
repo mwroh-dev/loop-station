@@ -7,6 +7,8 @@ import {
   createMessage,
   inspectMailboxReply,
   inspectMailboxStarted,
+  readMessages,
+  transitionMessage,
   writeEnvelope
 } from "../src/message-lifecycle.js";
 
@@ -158,6 +160,50 @@ describe("mailbox lifecycle", () => {
     assert.equal(inspectMailboxReply(message).complete, true);
     assert.equal(inspectMailboxStarted(message).started, false);
     assert.equal(inspectMailboxStarted(message).reason, "missing_mailbox_started");
+  });
+
+  it("rejects transition bodies that would overwrite protected message fields", () => {
+    const dir = mkdtempSync(join(tmpdir(), "loop-station-lifecycle-protected-"));
+    const message = createMessage(dir, {
+      id: "message-1",
+      runId: "run-1",
+      to: "RunnerAgent-Model",
+      type: "RUN_SKILL_CASE",
+      caseId: "case-1",
+      attempt: 1,
+      stageId: "run"
+    });
+
+    for (const key of ["id", "state", "caseId", "transitions", "body"]) {
+      assert.throws(
+        () => transitionMessage(dir, message.id, "pending", { [key]: "tampered" }),
+        /protected message field/
+      );
+    }
+
+    const transitioned = transitionMessage(dir, message.id, "pending", { failureReason: null, paneId: "%1" });
+    assert.equal(transitioned.id, "message-1");
+    assert.equal(transitioned.state, "pending");
+    assert.equal(transitioned.paneId, "%1");
+  });
+
+  it("surfaces corrupted messages.json instead of silently resetting history", () => {
+    const dir = mkdtempSync(join(tmpdir(), "loop-station-lifecycle-corrupt-"));
+
+    assert.deepEqual(readMessages(dir), []);
+
+    createMessage(dir, {
+      id: "message-1",
+      runId: "run-1",
+      to: "RunnerAgent-Model",
+      type: "RUN_SKILL_CASE",
+      caseId: "case-1",
+      attempt: 1,
+      stageId: "run"
+    });
+    writeFileSync(join(dir, "messages.json"), "[{\"id\": \"message-1\"");
+
+    assert.throws(() => readMessages(dir), SyntaxError);
   });
 });
 

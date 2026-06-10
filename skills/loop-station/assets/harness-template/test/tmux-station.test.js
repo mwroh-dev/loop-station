@@ -273,6 +273,64 @@ describe("tmux station layout", () => {
     }
   });
 
+  it("rejects codex model values that could inject shell commands", () => {
+    const dir = mkdtempSync(join(tmpdir(), "loop-station-tmux-unsafe-model-"));
+    const fakeBin = join(dir, "bin");
+    const fakeTmux = join(fakeBin, "tmux");
+    const logPath = join(dir, "tmux.log");
+    mkdirSync(fakeBin, { recursive: true });
+    writeFileSync(fakeTmux, fakeCurrentPaneTmuxScript());
+    chmodSync(fakeTmux, 0o755);
+    const previousPath = process.env.PATH;
+    const previousLog = process.env.TMUX_FAKE_LOG;
+    const previousTmux = process.env.TMUX;
+    const previousPane = process.env.TMUX_PANE;
+    process.env.PATH = `${fakeBin}:${previousPath}`;
+    process.env.TMUX_FAKE_LOG = logPath;
+    process.env.TMUX = "session";
+    process.env.TMUX_PANE = "%0";
+    try {
+      assert.throws(
+        () => createTmuxStation(dir, { sessionName: "fixture-session" }, {
+          windowName: "team",
+          agentCommandEnv: "STATION_AGENT_COMMAND",
+          codexRuntime: {
+            invokerDefault: { model: "gpt-5.4; touch /tmp/loop-station-pwned" }
+          },
+          locations: { stationRoot: dir, consumerRoot: dir },
+          agents: [
+            { name: "StationControl", kind: "code", cwd: "stationRoot", lifecycle: "run-scoped", visible: true },
+            { name: "RunnerAgent-Model", role: "runner", kind: "model", cwd: "consumerRoot", lifecycle: "attempt-scoped", visible: true }
+          ]
+        }),
+        /Unsafe codex model value/
+      );
+      assert.throws(
+        () => createTmuxStation(dir, { sessionName: "fixture-session" }, {
+          windowName: "team",
+          agentCommandEnv: "STATION_AGENT_COMMAND",
+          codexRuntime: {
+            invokerDefault: { model: "gpt-5.4", model_reasoning_effort: "high\"; touch /tmp/loop-station-pwned; \"" }
+          },
+          locations: { stationRoot: dir, consumerRoot: dir },
+          agents: [
+            { name: "StationControl", kind: "code", cwd: "stationRoot", lifecycle: "run-scoped", visible: true },
+            { name: "RunnerAgent-Model", role: "runner", kind: "model", cwd: "consumerRoot", lifecycle: "attempt-scoped", visible: true }
+          ]
+        }),
+        /Unsafe codex model_reasoning_effort value/
+      );
+    } finally {
+      process.env.PATH = previousPath;
+      if (previousLog === undefined) delete process.env.TMUX_FAKE_LOG;
+      else process.env.TMUX_FAKE_LOG = previousLog;
+      if (previousTmux === undefined) delete process.env.TMUX;
+      else process.env.TMUX = previousTmux;
+      if (previousPane === undefined) delete process.env.TMUX_PANE;
+      else process.env.TMUX_PANE = previousPane;
+    }
+  });
+
   it("isolates model pane workdirs by lifecycle under the role root", () => {
     const dir = mkdtempSync(join(tmpdir(), "loop-station-tmux-workdirs-"));
     const fakeBin = join(dir, "bin");

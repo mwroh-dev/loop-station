@@ -74,8 +74,30 @@ export function createMessage(runDir, input) {
   return message;
 }
 
+const PROTECTED_MESSAGE_FIELDS = new Set([
+  "id",
+  "runId",
+  "from",
+  "to",
+  "type",
+  "caseId",
+  "attempt",
+  "stageId",
+  "createdAt",
+  "updatedAt",
+  "state",
+  "body",
+  "artifactPaths",
+  "transitions"
+]);
+
 export function transitionMessage(runDir, messageId, state, body = {}) {
   if (!MESSAGE_STATES.includes(state)) throw new Error(`Unknown message state: ${state}`);
+  for (const key of Object.keys(body)) {
+    if (PROTECTED_MESSAGE_FIELDS.has(key)) {
+      throw new Error(`transitionMessage body must not contain protected message field: ${key}`);
+    }
+  }
   const messages = readMessages(runDir);
   const index = messages.findIndex((message) => message.id === messageId);
   if (index === -1) throw new Error(`Unknown message: ${messageId}`);
@@ -101,11 +123,12 @@ export function failMessage(runDir, messageId, state, reason) {
 }
 
 export function readMessages(runDir) {
-  try {
-    return readJson(messagesPath(runDir));
-  } catch {
-    return [];
-  }
+  const path = messagesPath(runDir);
+  if (!existsSync(path)) return [];
+  // A corrupted messages.json must surface instead of being treated as an
+  // empty history: returning [] here would let the next upsert overwrite the
+  // entire dispatch record.
+  return readJson(path);
 }
 
 export function writeEnvelope(runDir, message) {

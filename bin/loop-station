@@ -523,7 +523,10 @@ function normalizeSetupTargetSkills(project, targetSkills) {
 function normalizeSetupLocations(project, locations) {
   const next = {};
   for (const [key, value] of Object.entries(locations ?? {})) {
-    next[key] = typeof value === "string" ? value : value;
+    // Spec locations are project-root-relative (assertConsumerSafeSetupSpec
+    // validates them that way), but the generated station.json is resolved
+    // against .loop-station/ at load time — so anchor them here.
+    next[key] = typeof value === "string" ? resolve(project, value) : value;
   }
   return next;
 }
@@ -796,7 +799,7 @@ function shouldInstallTemplatePath(source) {
   const rel = relative(TEMPLATE, source);
   if (!rel) return true;
   const [top] = rel.split(/[\\/]/);
-  return !["config", "eval", "runs", "test"].includes(top);
+  return !["config", "eval", "runs", "test", "node_modules"].includes(top);
 }
 
 function printHelp() {

@@ -495,7 +495,7 @@ async function dispatchNextCase({ dispatchOnly }) {
   }));
   const message = createMessage(runDir, {
     runId: ctx.run.runId,
-    to: "RunnerAgent-Model",
+    to: runnerAgentName(config),
     type: "RUN_SKILL_CASE",
     caseId: queueItem.id,
     attempt,
@@ -531,8 +531,8 @@ async function dispatchNextCase({ dispatchOnly }) {
   transitionMessage(runDir, message.id, "pending");
 
   if (!dispatchOnly) {
-    const submitted = await submitMessageToAgent(runDir, config, message, "RunnerAgent-Model", queueItem.folder);
-    if (!submitted.ok) throw new Error(`Failed to submit message ${message.id} to RunnerAgent-Model`);
+    const submitted = await submitMessageToAgent(runDir, config, message, message.to, queueItem.folder);
+    if (!submitted.ok) throw new Error(`Failed to submit message ${message.id} to ${message.to}`);
   }
 
   emit(runDir, "case_dispatched", { caseId: queueItem.id, attempt, messageId: message.id, dispatchOnly });
@@ -557,6 +557,10 @@ function stageAgentName(config, stage) {
 
 function evaluatorAgentName(config) {
   return firstAgentNameForRole(config, "evaluator") ?? "EvaluatorAgent-Model";
+}
+
+function runnerAgentName(config) {
+  return firstAgentNameForRole(config, "runner") ?? "RunnerAgent-Model";
 }
 
 function attemptDirForCase(runDir, queueItem) {
@@ -1645,6 +1649,11 @@ export async function tickRun(runDir, { dispatchOnly = false } = {}) {
   if (ctx.state.activeStageId === "evaluate" || ctx.state.activeStageId === "evaluate-run") {
     return await advanceEvaluatedActiveCase(runDir, ctx, { dispatchOnly });
   }
+  if (ctx.state.activeStageId) {
+    // An unrecognized stage would otherwise spin forever as a healthy-looking
+    // no-op tick; fail loudly so the orchestrator logs the stuck state.
+    throw new Error(`tickRun cannot advance unknown active stage: ${ctx.state.activeStageId}`);
+  }
   return false;
 }
 
@@ -1708,8 +1717,10 @@ export async function advanceCompletedActiveCase(runDir, ctx, { dispatchOnly = f
 }
 
 async function startEvaluationStage(runDir, ctx, queueItem, attemptDir, { dispatchOnly }) {
+  const config = loadConfig();
+  const evaluator = evaluatorAgentName(config);
   const existing = ctx.messages.find((message) => (
-    message.to === "EvaluatorAgent-Model"
+    message.to === evaluator
     && message.type === "EVALUATE_CASE"
     && message.caseId === queueItem.id
     && message.attempt === queueItem.attempts
@@ -1721,7 +1732,7 @@ async function startEvaluationStage(runDir, ctx, queueItem, attemptDir, { dispat
   };
   const message = createMessage(runDir, {
     runId: ctx.run.runId,
-    to: "EvaluatorAgent-Model",
+    to: evaluator,
     type: "EVALUATE_CASE",
     caseId: queueItem.id,
     attempt: queueItem.attempts,
@@ -1736,12 +1747,12 @@ async function startEvaluationStage(runDir, ctx, queueItem, attemptDir, { dispat
         dispatch: join(attemptDir, "dispatch.json")
       },
       requiredOutputs,
-      targetSkills: configuredTargetSkills(loadConfig()).map((skill) => ({
+      targetSkills: configuredTargetSkills(config).map((skill) => ({
         name: skill.targetSkillName,
         slug: skill.slug,
         installPath: skill.installPath
       })),
-      skillProfiles: discoverConfiguredSkillProfiles(loadConfig(), queueItem.prompt),
+      skillProfiles: discoverConfiguredSkillProfiles(config, queueItem.prompt),
       rule: "Evaluate runner artifacts, process evidence, public skill invocation evidence, and output provenance. Pass only when required artifacts and source evidence satisfy the case."
     },
     artifactPaths: Object.values(requiredOutputs)
@@ -1751,8 +1762,8 @@ async function startEvaluationStage(runDir, ctx, queueItem, attemptDir, { dispat
   saveState(runDir, ctx.state);
   transitionMessage(runDir, message.id, "pending");
   if (!dispatchOnly) {
-    const submitted = await submitMessageToAgent(runDir, loadConfig(), message, "EvaluatorAgent-Model", queueItem.folder);
-    if (!submitted.ok) throw new Error(`Failed to submit message ${message.id} to EvaluatorAgent-Model`);
+    const submitted = await submitMessageToAgent(runDir, config, message, evaluator, queueItem.folder);
+    if (!submitted.ok) throw new Error(`Failed to submit message ${message.id} to ${evaluator}`);
   }
   emit(runDir, "evaluation_dispatched", { caseId: queueItem.id, attempt: queueItem.attempts, messageId: message.id, dispatchOnly });
   return true;
@@ -1849,7 +1860,7 @@ function detectActiveRunnerBypass(runDir, ctx) {
   } catch {
     return [];
   }
-  const paneId = panes["RunnerAgent-Model"]?.paneId;
+  const paneId = panes[runnerAgentName(loadConfig())]?.paneId;
   if (!paneId) return [];
   const transcript = capturePane(paneId, 200);
   return detectRunnerBypassViolations(transcript, "runner-pane", runnerGuardOptions(ctx));
