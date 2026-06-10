@@ -387,6 +387,16 @@ describe("loop-station root CLI", () => {
     rmSync(project, { recursive: true, force: true });
   });
 
+  it("fails with a clear error when an option flag is missing its value", () => {
+    const result = spawnSync(process.execPath, [bin, "install", "--project"], {
+      cwd: root,
+      encoding: "utf8"
+    });
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Missing value for --project/);
+  });
+
   it("setup fails when the project-local loop-station skill is missing", () => {
     const project = mkdtempSync(join(tmpdir(), "loop-station-setup-missing-skill-"));
     const specPath = join(project, "setup-spec.json");

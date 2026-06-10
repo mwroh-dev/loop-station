@@ -15,18 +15,24 @@ export async function runOrchestrator(runDir) {
     return;
   }
   let heartbeat = 0;
+  let consecutiveTickFailures = 0;
   while (!existsSync(join(runDir, "locks", "stop-requested"))) {
     heartbeat += 1;
     try {
       const changed = await tickRun(runDir, { dispatchOnly: false });
+      consecutiveTickFailures = 0;
       if (changed) appendStationLog(runDir, `tick applied state change heartbeat=${heartbeat}`);
     } catch (error) {
-      emit(runDir, "orchestrator_tick_failed", { heartbeat, error: error.message });
-      appendStationLog(runDir, `tick failed heartbeat=${heartbeat} error=${error.message}`);
+      consecutiveTickFailures += 1;
+      emit(runDir, "orchestrator_tick_failed", { heartbeat, consecutiveTickFailures, error: error.message });
+      appendStationLog(runDir, `tick failed heartbeat=${heartbeat} consecutive=${consecutiveTickFailures} error=${error.message}`);
     }
     emit(runDir, "orchestrator_heartbeat", { heartbeat });
     appendStationLog(runDir, `heartbeat ${heartbeat}`);
-    await sleep(2000);
+    // Back off while ticks fail persistently so a broken run does not flood
+    // station.log/events.ndjson at full polling speed.
+    const backoffMs = Math.min(2000 * 2 ** Math.min(consecutiveTickFailures, 4), 30000);
+    await sleep(backoffMs);
   }
   emit(runDir, "orchestrator_stopped", { heartbeat });
   appendStationLog(runDir, "orchestrator stopped");

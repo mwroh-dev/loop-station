@@ -133,7 +133,11 @@ export function inspectActionStageAttempt(stageDir, stage = {}, options = {}) {
       dispatchEvidence = readJson(legacyRuntimeEvidencePath);
     } catch {}
   }
-  if (!dispatchEvidence || !evidenceIncludesSkill(dispatchEvidence.stageSkill, stage.skill) || dispatchEvidence.messageId !== readJson(dispatchPath).id) {
+  let dispatchRecordId = null;
+  try {
+    dispatchRecordId = readJson(dispatchPath).id;
+  } catch {}
+  if (!dispatchEvidence || !evidenceIncludesSkill(dispatchEvidence.stageSkill, stage.skill) || dispatchEvidence.messageId !== dispatchRecordId) {
     return {
       complete: true,
       passed: false,

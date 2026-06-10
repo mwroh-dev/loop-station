@@ -41,8 +41,12 @@ export async function waitForArtifacts(runDir, message, artifacts, options = {})
 }
 
 function artifactReady(path) {
-  if (!existsSync(path)) return false;
-  return readFileSync(path, "utf8").trim().length > 0;
+  // Tolerate files vanishing between checks (e.g. write-then-rename patterns).
+  try {
+    return readFileSync(path, "utf8").trim().length > 0;
+  } catch {
+    return false;
+  }
 }
 
 function sleep(ms) {

@@ -942,7 +942,7 @@ function shouldRespawnBeforeDispatch(panes, agentName, forceRespawn = false) {
 async function submitMessageToAgent(runDir, config, message, agentName, caseFolder, { forceRespawn = false } = {}) {
   let panes = readPanes(runDir);
   if (shouldRespawnBeforeDispatch(panes, agentName, forceRespawn)) {
-    panes = respawnAgentPane(runDir, panes, agentName, config, caseFolder);
+    panes = await respawnAgentPane(runDir, panes, agentName, config, caseFolder);
   }
   return pasteMessageToPane(runDir, panes, message, submissionTimeouts(config));
 }
