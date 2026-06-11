@@ -102,7 +102,7 @@ injecting `model: "<good>; touch <sentinel>"` into the real installed module's
 | C1 | full live loop + `smoke-run-one`: structural fields intact across all transitions | ✅ live |
 | C2 | real pane-spawn path: clean model passes as `-m`, malicious value rejected, no execution | ✅ live (trap) |
 | M1 | real concurrent run: all state files parse, no partial-write corruption | ✅ live |
-| M2 | non-managed path; not reached by preset run — covered by unit test only | ⚠️ unit only |
+| M2 | integration test forces an unknown stage through the real non-managed CLI path and asserts a loud failure; not reached by a preset LLM run | ✅ test (non-managed path) |
 | M3 | non-managed path; managed path was already correct — unit/integration only | ⚠️ unit only |
 | M4 | canonical `setup` CLI: relative location resolves to absolute | ✅ live |
 | M5 | template has no `node_modules`, so only weakly exercised | ⚠️ weak |
@@ -114,7 +114,8 @@ with zero tick failures — no recurrence of any fixed defect.
 
 ### Open gaps
 
-- **M2 / M3** need a legacy (non-preset) station config to exercise live; not yet done.
+- **M3** needs a legacy (non-preset) station config to exercise live; M2 is now pinned by a
+  non-managed integration test but not yet run through a full live LLM loop.
 - **M5** needs a dummy `node_modules` planted in the template to prove the exclusion live.
 
 ## Observations (not defects)
