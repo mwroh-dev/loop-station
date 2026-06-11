@@ -247,7 +247,9 @@ function presetRoleViolations(config) {
 
 function normalizeRoleCounts(roleCounts = {}) {
   const counts = {};
-  for (const [key, value] of Object.entries(roleCounts)) {
+  // Guard an explicit null (default params only cover undefined); callers pass
+  // preset values like definition.defaultRoleCounts that may be null.
+  for (const [key, value] of Object.entries(roleCounts ?? {})) {
     const role = canonicalRole(key);
     if (!role) continue;
     const count = Number.parseInt(String(value ?? 0), 10);

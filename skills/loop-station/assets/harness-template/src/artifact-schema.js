@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 export function requiredJsonArtifactsForStage(stage = {}) {
@@ -34,7 +34,11 @@ export function validateStageArtifacts(stageDir, stage = {}) {
   const violations = [];
   for (const name of requiredJsonArtifactsForStage(stage)) {
     const path = join(stageDir, name);
-    if (!existsSync(path) || !statSync(path).isFile() || statSync(path).size === 0) {
+    // Single stat in a guard: no double statSync, and a file that vanishes
+    // between checks is treated as missing instead of throwing ENOENT.
+    let stat = null;
+    try { stat = statSync(path); } catch {}
+    if (!stat || !stat.isFile() || stat.size === 0) {
       violations.push(`${name}: missing_or_empty`);
       continue;
     }
