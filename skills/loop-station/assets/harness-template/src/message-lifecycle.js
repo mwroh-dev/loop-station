@@ -93,7 +93,9 @@ const PROTECTED_MESSAGE_FIELDS = new Set([
 
 export function transitionMessage(runDir, messageId, state, body = {}) {
   if (!MESSAGE_STATES.includes(state)) throw new Error(`Unknown message state: ${state}`);
-  for (const key of Object.keys(body)) {
+  // Tolerate an explicit null/non-object body the same way `...body` always did.
+  const safeBody = (body && typeof body === "object") ? body : {};
+  for (const key of Object.keys(safeBody)) {
     if (PROTECTED_MESSAGE_FIELDS.has(key)) {
       throw new Error(`transitionMessage body must not contain protected message field: ${key}`);
     }
@@ -106,8 +108,8 @@ export function transitionMessage(runDir, messageId, state, body = {}) {
     ...messages[index],
     state,
     updatedAt: now,
-    ...body,
-    transitions: [...(messages[index].transitions ?? []), { state, at: now, body }]
+    ...safeBody,
+    transitions: [...(messages[index].transitions ?? []), { state, at: now, body: safeBody }]
   };
   messages[index] = message;
   writeJson(messagesPath(runDir), messages);

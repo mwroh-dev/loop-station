@@ -185,6 +185,10 @@ describe("mailbox lifecycle", () => {
     assert.equal(transitioned.id, "message-1");
     assert.equal(transitioned.state, "pending");
     assert.equal(transitioned.paneId, "%1");
+
+    // A null/omitted body must not crash (it behaves like the old `...body` no-op).
+    assert.doesNotThrow(() => transitionMessage(dir, message.id, "submitted", null));
+    assert.equal(transitionMessage(dir, message.id, "accepted_by_pane").state, "accepted_by_pane");
   });
 
   it("surfaces corrupted messages.json instead of silently resetting history", () => {
