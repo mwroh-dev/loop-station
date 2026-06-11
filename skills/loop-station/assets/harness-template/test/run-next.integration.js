@@ -668,6 +668,27 @@ describe("run-next dispatch", () => {
 
     runStation(["cleanup"], { STATION_CONFIG: fixture.configPath });
   });
+
+  it("fails loudly instead of spinning silently on an unknown active stage", () => {
+    removeRunsDir();
+    const fixture = createConfigFixture({ installSkill: true });
+
+    const start = runStation(["boot", "--limit", "4"], { STATION_CONFIG: fixture.configPath });
+    assert.equal(start.status, 0, start.stderr || start.stdout);
+    const runDir = latestRunDir();
+
+    // Force the run into a stage the non-managed tick path does not recognize.
+    const statePath = join(runDir, "state.json");
+    const state = JSON.parse(readFileSync(statePath, "utf8"));
+    state.activeStageId = "totally-unknown-stage";
+    writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`);
+
+    const stuck = runStation(["run-next"], { STATION_CONFIG: fixture.configPath });
+    assert.notEqual(stuck.status, 0, stuck.stdout);
+    assert.match(stuck.stderr, /unknown active stage: totally-unknown-stage/);
+
+    runStation(["cleanup"], { STATION_CONFIG: fixture.configPath });
+  });
 });
 
 function createConfigFixture({ installSkill }) {
