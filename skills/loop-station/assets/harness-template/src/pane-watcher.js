@@ -1,6 +1,11 @@
 import { isPaneAlive, capturePane } from "./tmux-station.js";
 
-export function classifyPaneText(text) {
+const CLASSIFY_TAIL_LINES = 40;
+
+export function classifyPaneText(rawText) {
+  // Classify only the tail of the capture: stale scrollback (e.g. an old
+  // "Working" line) must not mask the pane's current prompt state.
+  const text = String(rawText ?? "").split("\n").slice(-CLASSIFY_TAIL_LINES).join("\n");
   if (/No active thread is available/.test(text)) return { state: "modal_blocked", signals: ["no_active_thread"] };
   if (/Queued follow-up inputs/.test(text) && !/Working|esc to interrupt/.test(text)) return { state: "follow_up_pending", signals: ["queued_follow_up"] };
   if (/Skip until next version|Press enter to continue/.test(text)) return { state: "modal_blocked", signals: ["update_prompt"] };

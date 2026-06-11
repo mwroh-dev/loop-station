@@ -225,6 +225,7 @@ describe("loop-station root CLI", () => {
       loopType: "skill-improvement",
       targetSkills: ["$example-skill"],
       layout: { sectionDirection: "horizontal" },
+      locations: { consumerRoot: "consumer" },
       roles: {
         runner: 2,
         evaluator: 1,
@@ -269,6 +270,9 @@ describe("loop-station root CLI", () => {
     assert.deepEqual(config.runtimePolicy, { attachRequired: true, allowDetached: false, allowGenericActionStages: false });
     assert.equal(config.codexRuntime.invokerDefault.model, "gpt-5.4");
     assert.equal(config.codexRuntime.invokerDefault.model_reasoning_effort, "xhigh");
+    // Spec locations are project-root-relative; the generated station.json is
+    // resolved against .loop-station/, so setup must anchor them.
+    assert.equal(config.locations.consumerRoot, join(project, "consumer"));
 
     rmSync(project, { recursive: true, force: true });
     rmSync(home, { recursive: true, force: true });
@@ -381,6 +385,16 @@ describe("loop-station root CLI", () => {
     assert.equal(recommendation.decisionFlow.every((decision) => decision.decision.mode === "explicit-selection"), true);
 
     rmSync(project, { recursive: true, force: true });
+  });
+
+  it("fails with a clear error when an option flag is missing its value", () => {
+    const result = spawnSync(process.execPath, [bin, "install", "--project"], {
+      cwd: root,
+      encoding: "utf8"
+    });
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Missing value for --project/);
   });
 
   it("setup fails when the project-local loop-station skill is missing", () => {

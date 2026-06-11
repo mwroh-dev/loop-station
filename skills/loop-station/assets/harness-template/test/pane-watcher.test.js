@@ -18,6 +18,19 @@ describe("pane watcher", () => {
     });
   });
 
+  it("classifies by the capture tail so stale scrollback cannot mask the current state", () => {
+    const staleWorking = [
+      "Working (esc to interrupt)",
+      ...Array.from({ length: 45 }, (_, index) => `old output line ${index + 1}`),
+      ">_ OpenAI Codex",
+      "› "
+    ].join("\n");
+    assert.deepEqual(classifyPaneText(staleWorking), {
+      state: "ready",
+      signals: ["prompt_visible"]
+    });
+  });
+
   it("classifies Codex startup blocks distinctly", () => {
     assert.deepEqual(classifyPaneText("Skip until next version\nPress enter to continue"), {
       state: "modal_blocked",

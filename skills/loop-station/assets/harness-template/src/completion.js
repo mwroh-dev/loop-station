@@ -133,7 +133,11 @@ export function inspectActionStageAttempt(stageDir, stage = {}, options = {}) {
       dispatchEvidence = readJson(legacyRuntimeEvidencePath);
     } catch {}
   }
-  if (!dispatchEvidence || !evidenceIncludesSkill(dispatchEvidence.stageSkill, stage.skill) || dispatchEvidence.messageId !== readJson(dispatchPath).id) {
+  let dispatchRecordId = null;
+  try {
+    dispatchRecordId = readJson(dispatchPath).id;
+  } catch {}
+  if (!dispatchEvidence || !evidenceIncludesSkill(dispatchEvidence.stageSkill, stage.skill) || dispatchEvidence.messageId !== dispatchRecordId) {
     return {
       complete: true,
       passed: false,
@@ -287,7 +291,14 @@ export function inspectEvaluatorAttempt(attemptDir, options = {}) {
 }
 
 function isNonEmptyFile(path) {
-  return existsSync(path) && statSync(path).isFile() && statSync(path).size > 0;
+  // Single stat in a guard: avoids the double statSync and the race where the
+  // file vanishes between existsSync and statSync (which would throw ENOENT).
+  try {
+    const stat = statSync(path);
+    return stat.isFile() && stat.size > 0;
+  } catch {
+    return false;
+  }
 }
 
 function listGuardViolations(attemptDir, options = {}) {

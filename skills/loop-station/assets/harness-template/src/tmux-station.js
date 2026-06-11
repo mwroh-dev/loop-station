@@ -168,7 +168,7 @@ export function isPaneAlive(paneId) {
   return spawnSync("tmux", ["display-message", "-p", "-t", paneId, "#{pane_id}"], { stdio: "ignore" }).status === 0;
 }
 
-export function respawnAgentPane(runDir, panes, agentName, config, caseFolder = null) {
+export async function respawnAgentPane(runDir, panes, agentName, config, caseFolder = null) {
   const pane = panes[agentName];
   if (!pane) return panes;
   if (!hasTmux()) throw new Error("tmux is required to respawn station panes");
@@ -177,7 +177,7 @@ export function respawnAgentPane(runDir, panes, agentName, config, caseFolder = 
   tmux(["respawn-pane", "-k", "-t", pane.paneId, ...agentCommand(agent, runDir, config, caseFolder)]);
   tmux(["select-pane", "-t", pane.paneId, "-T", agent.name]);
   tmux(["clear-history", "-t", pane.paneId]);
-  waitForPaneReady(pane.paneId, config.timeouts?.paneReadyMs ?? 15000);
+  await waitForPaneReady(pane.paneId, config.timeouts?.paneReadyMs ?? 15000);
   const updated = {
     ...panes,
     [agentName]: paneRecord(pane.paneId, agent, config, caseFolder)
@@ -223,10 +223,19 @@ function modelAgentCommand(agent, config) {
   return codexAgentCommand(profile);
 }
 
+const SAFE_CODEX_OPTION_PATTERN = /^[A-Za-z0-9._:-]+$/;
+
+function assertSafeCodexOption(name, value) {
+  if (!SAFE_CODEX_OPTION_PATTERN.test(String(value))) {
+    throw new Error(`Unsafe codex ${name} value for shell command: ${JSON.stringify(value)}`);
+  }
+  return value;
+}
+
 function codexAgentCommand(profile = {}) {
   const args = [];
-  if (profile.model) args.push(`-m ${profile.model}`);
-  if (profile.model_reasoning_effort) args.push(`-c model_reasoning_effort="${profile.model_reasoning_effort}"`);
+  if (profile.model) args.push(`-m ${assertSafeCodexOption("model", profile.model)}`);
+  if (profile.model_reasoning_effort) args.push(`-c model_reasoning_effort="${assertSafeCodexOption("model_reasoning_effort", profile.model_reasoning_effort)}"`);
   const prefix = args.length > 0 ? `${args.join(" ")} ` : "";
   return `CODEX_BIN="\${STATION_CODEX_BIN:-codex}"; exec "$CODEX_BIN" ${prefix}--no-alt-screen -C "$STATION_AGENT_CWD" --sandbox danger-full-access --dangerously-bypass-approvals-and-sandbox`;
 }
@@ -319,12 +328,12 @@ function sanitizePathSegment(value) {
     .replace(/^-+|-+$/g, "") || "unknown";
 }
 
-function waitForPaneReady(paneId, timeoutMs) {
+async function waitForPaneReady(paneId, timeoutMs) {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
     const text = capturePane(paneId, 80);
     if (/OpenAI Codex|›|>_/.test(text)) return true;
-    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250);
+    await new Promise((resolve) => setTimeout(resolve, 250));
   }
   throw new Error(`Pane did not become ready: ${paneId}`);
 }

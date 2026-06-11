@@ -7,7 +7,7 @@ import { stdin as input, stdout as output } from "node:process";
 import { loadConfig } from "./config.js";
 import { createRun, loadRun, requireRunDir, saveQueue, saveState } from "./run-store.js";
 import { emit } from "./events.js";
-import { ensureDir, removePath } from "./fs.js";
+import { ensureDir, removePath, writeJson } from "./fs.js";
 import { capturePane, createTmuxStation, focusStation, killPane, killSession, readStationTopology, respawnAgentPane, updateStationTopology } from "./tmux-station.js";
 import { runOrchestrator } from "./orchestrator.js";
 import { prepareStationControlFiles, requestStop, startBackgroundOrchestrator, waitForStop, writeStationSummary } from "./station-control.js";
@@ -476,7 +476,7 @@ async function dispatchNextCase({ dispatchOnly }) {
   const attempt = queueItem.attempts + 1;
   const attemptDir = join(runDir, "cases", queueItem.id, `attempt-${attempt}`);
   ensureDir(attemptDir);
-  writeFileSync(join(attemptDir, "case-folder-before.json"), `${JSON.stringify(snapshotCaseFolder(queueItem.folder), null, 2)}\n`);
+  writeJson(join(attemptDir, "case-folder-before.json"), snapshotCaseFolder(queueItem.folder));
   const requiredOutputs = {
     runnerReport: join(attemptDir, "runner-report.md"),
     runnerMetadata: join(attemptDir, "runner-metadata.json"),
@@ -495,7 +495,7 @@ async function dispatchNextCase({ dispatchOnly }) {
   }));
   const message = createMessage(runDir, {
     runId: ctx.run.runId,
-    to: "RunnerAgent-Model",
+    to: runnerAgentName(config),
     type: "RUN_SKILL_CASE",
     caseId: queueItem.id,
     attempt,
@@ -520,7 +520,7 @@ async function dispatchNextCase({ dispatchOnly }) {
     },
     artifactPaths: Object.values(requiredOutputs)
   });
-  writeFileSync(join(attemptDir, "dispatch.json"), `${JSON.stringify(message, null, 2)}\n`);
+  writeJson(join(attemptDir, "dispatch.json"), message);
 
   queueItem.status = "active";
   queueItem.attempts = attempt;
@@ -531,8 +531,8 @@ async function dispatchNextCase({ dispatchOnly }) {
   transitionMessage(runDir, message.id, "pending");
 
   if (!dispatchOnly) {
-    const submitted = await submitMessageToAgent(runDir, config, message, "RunnerAgent-Model", queueItem.folder);
-    if (!submitted.ok) throw new Error(`Failed to submit message ${message.id} to RunnerAgent-Model`);
+    const submitted = await submitMessageToAgent(runDir, config, message, message.to, queueItem.folder);
+    if (!submitted.ok) throw new Error(`Failed to submit message ${message.id} to ${message.to}`);
   }
 
   emit(runDir, "case_dispatched", { caseId: queueItem.id, attempt, messageId: message.id, dispatchOnly });
@@ -557,6 +557,10 @@ function stageAgentName(config, stage) {
 
 function evaluatorAgentName(config) {
   return firstAgentNameForRole(config, "evaluator") ?? "EvaluatorAgent-Model";
+}
+
+function runnerAgentName(config) {
+  return firstAgentNameForRole(config, "runner") ?? "RunnerAgent-Model";
 }
 
 function attemptDirForCase(runDir, queueItem) {
@@ -599,7 +603,7 @@ async function dispatchNextActionPipelineCase(runDir, ctx, config, queueItem, { 
   const attempt = queueItem.attempts + 1;
   const attemptDir = join(runDir, "cases", queueItem.id, `attempt-${attempt}`);
   ensureDir(attemptDir);
-  writeFileSync(join(attemptDir, "case-folder-before.json"), `${JSON.stringify(snapshotCaseFolder(queueItem.folder), null, 2)}\n`);
+  writeJson(join(attemptDir, "case-folder-before.json"), snapshotCaseFolder(queueItem.folder));
   queueItem.status = "active";
   queueItem.attempts = attempt;
   ctx.state.activeCaseId = queueItem.id;
@@ -642,7 +646,7 @@ async function startSequentialActionStage(runDir, ctx, config, queueItem, stage,
     },
     artifactPaths: requiredArtifacts
   });
-  writeFileSync(join(stageDir, "dispatch.json"), `${JSON.stringify(message, null, 2)}\n`);
+  writeJson(join(stageDir, "dispatch.json"), message);
   ctx.state.activeStageId = stage.id;
   saveState(runDir, ctx.state);
   transitionMessage(runDir, message.id, "pending");
@@ -799,7 +803,7 @@ async function startActionPipelineEvaluationStage(runDir, ctx, config, queueItem
     },
     artifactPaths: Object.values(requiredOutputs)
   });
-  writeFileSync(join(attemptDir, "evaluation-dispatch.json"), `${JSON.stringify(message, null, 2)}\n`);
+  writeJson(join(attemptDir, "evaluation-dispatch.json"), message);
   ctx.state.activeStageId = "evaluate-run";
   saveState(runDir, ctx.state);
   transitionMessage(runDir, message.id, "pending");
@@ -938,7 +942,7 @@ function shouldRespawnBeforeDispatch(panes, agentName, forceRespawn = false) {
 async function submitMessageToAgent(runDir, config, message, agentName, caseFolder, { forceRespawn = false } = {}) {
   let panes = readPanes(runDir);
   if (shouldRespawnBeforeDispatch(panes, agentName, forceRespawn)) {
-    panes = respawnAgentPane(runDir, panes, agentName, config, caseFolder);
+    panes = await respawnAgentPane(runDir, panes, agentName, config, caseFolder);
   }
   return pasteMessageToPane(runDir, panes, message, submissionTimeouts(config));
 }
@@ -992,9 +996,9 @@ async function startManagedRunLane(runDir, ctx, config, queueItem, agentName, { 
   const attempt = queueItem.attempts + 1;
   const attemptDir = join(runDir, "cases", queueItem.id, `attempt-${attempt}`);
   ensureDir(attemptDir);
-  writeFileSync(join(attemptDir, "case-folder-before.json"), `${JSON.stringify(snapshotCaseFolder(queueItem.folder), null, 2)}\n`);
+  writeJson(join(attemptDir, "case-folder-before.json"), snapshotCaseFolder(queueItem.folder));
   const message = buildRunMessage(runDir, ctx, config, queueItem, attempt, attemptDir, agentName);
-  writeFileSync(join(attemptDir, "dispatch.json"), `${JSON.stringify(message, null, 2)}\n`);
+  writeJson(join(attemptDir, "dispatch.json"), message);
   queueItem.status = "active_run";
   queueItem.attempts = attempt;
   const lane = createLane(ctx.state, {
@@ -1295,7 +1299,7 @@ async function assignWaitingEvaluations(runDir, ctx, config, { dispatchOnly }) {
     if (!reviewer || !queueItem) break;
     const attemptDir = runnerAttemptDir(runDir, queueItem);
     const message = buildEvaluationMessage(runDir, ctx, config, queueItem, attemptDir, reviewer);
-    writeFileSync(join(attemptDir, "evaluation-dispatch.json"), `${JSON.stringify(message, null, 2)}\n`);
+    writeJson(join(attemptDir, "evaluation-dispatch.json"), message);
     queueItem.status = "active_evaluation";
     const lane = createLane(ctx.state, {
       role: agentRole({ name: reviewer }),
@@ -1370,7 +1374,7 @@ async function assignWaitingChallengeReviews(runDir, ctx, config, { dispatchOnly
     const attemptDir = runnerAttemptDir(runDir, queueItem);
     const priorVerdict = inspectEvaluatorAttempt(attemptDir);
     const message = buildChallengeReviewMessage(runDir, ctx, queueItem, attemptDir, reviewer, priorVerdict);
-    writeFileSync(join(attemptDir, "challenge-dispatch.json"), `${JSON.stringify(message, null, 2)}\n`);
+    writeJson(join(attemptDir, "challenge-dispatch.json"), message);
     queueItem.status = "active_challenge_review";
     const lane = createLane(ctx.state, {
       role: agentRole({ name: reviewer }),
@@ -1429,7 +1433,7 @@ async function assignWaitingProviders(runDir, ctx, config, { dispatchOnly }) {
     const queueItem = ctx.queue.find((item) => item.status === (isRecoveryLoop(config) ? "waiting_provider_fix" : "waiting_provider"));
     if (!provider || !queueItem) break;
     const message = buildProviderMessage(runDir, ctx, queueItem, "failed", provider);
-    writeFileSync(join(runnerAttemptDir(runDir, queueItem), "provider-dispatch.json"), `${JSON.stringify(message, null, 2)}\n`);
+    writeJson(join(runnerAttemptDir(runDir, queueItem), "provider-dispatch.json"), message);
     queueItem.status = isRecoveryLoop(config) ? "active_provider_fix" : "active_provider";
     const lane = createLane(ctx.state, {
       role: isRecoveryLoop(config) ? "provider_engineer" : "provider",
@@ -1498,7 +1502,7 @@ async function assignWaitingDeployVerifications(runDir, ctx, config, { dispatchO
     const queueItem = ctx.queue.find((item) => item.status === "waiting_deploy_verify");
     if (!verifier || !queueItem) break;
     const message = buildDeployVerifyMessage(runDir, ctx, queueItem, verifier);
-    writeFileSync(join(runnerAttemptDir(runDir, queueItem), "deploy-verify-dispatch.json"), `${JSON.stringify(message, null, 2)}\n`);
+    writeJson(join(runnerAttemptDir(runDir, queueItem), "deploy-verify-dispatch.json"), message);
     queueItem.status = "active_deploy_verify";
     const lane = createLane(ctx.state, {
       role: "deploy_verifier",
@@ -1571,7 +1575,7 @@ function detectRunnerBypassForAgent(runDir, agentName, ctx, stage = null) {
   } catch {
     return [];
   }
-  const paneId = panes[agentName]?.paneId;
+  const paneId = panes?.[agentName]?.paneId;
   if (!paneId) return [];
   const transcript = capturePane(paneId, 200);
   return detectRunnerBypassViolations(transcript, `${agentName}-pane`, runnerGuardOptions(ctx, stage));
@@ -1645,6 +1649,11 @@ export async function tickRun(runDir, { dispatchOnly = false } = {}) {
   if (ctx.state.activeStageId === "evaluate" || ctx.state.activeStageId === "evaluate-run") {
     return await advanceEvaluatedActiveCase(runDir, ctx, { dispatchOnly });
   }
+  if (ctx.state.activeStageId) {
+    // An unrecognized stage would otherwise spin forever as a healthy-looking
+    // no-op tick; fail loudly so the orchestrator logs the stuck state.
+    throw new Error(`tickRun cannot advance unknown active stage: ${ctx.state.activeStageId}`);
+  }
   return false;
 }
 
@@ -1708,8 +1717,10 @@ export async function advanceCompletedActiveCase(runDir, ctx, { dispatchOnly = f
 }
 
 async function startEvaluationStage(runDir, ctx, queueItem, attemptDir, { dispatchOnly }) {
+  const config = loadConfig();
+  const evaluator = evaluatorAgentName(config);
   const existing = ctx.messages.find((message) => (
-    message.to === "EvaluatorAgent-Model"
+    message.to === evaluator
     && message.type === "EVALUATE_CASE"
     && message.caseId === queueItem.id
     && message.attempt === queueItem.attempts
@@ -1721,7 +1732,7 @@ async function startEvaluationStage(runDir, ctx, queueItem, attemptDir, { dispat
   };
   const message = createMessage(runDir, {
     runId: ctx.run.runId,
-    to: "EvaluatorAgent-Model",
+    to: evaluator,
     type: "EVALUATE_CASE",
     caseId: queueItem.id,
     attempt: queueItem.attempts,
@@ -1736,23 +1747,23 @@ async function startEvaluationStage(runDir, ctx, queueItem, attemptDir, { dispat
         dispatch: join(attemptDir, "dispatch.json")
       },
       requiredOutputs,
-      targetSkills: configuredTargetSkills(loadConfig()).map((skill) => ({
+      targetSkills: configuredTargetSkills(config).map((skill) => ({
         name: skill.targetSkillName,
         slug: skill.slug,
         installPath: skill.installPath
       })),
-      skillProfiles: discoverConfiguredSkillProfiles(loadConfig(), queueItem.prompt),
+      skillProfiles: discoverConfiguredSkillProfiles(config, queueItem.prompt),
       rule: "Evaluate runner artifacts, process evidence, public skill invocation evidence, and output provenance. Pass only when required artifacts and source evidence satisfy the case."
     },
     artifactPaths: Object.values(requiredOutputs)
   });
-  writeFileSync(join(attemptDir, "evaluation-dispatch.json"), `${JSON.stringify(message, null, 2)}\n`);
+  writeJson(join(attemptDir, "evaluation-dispatch.json"), message);
   ctx.state.activeStageId = "evaluate";
   saveState(runDir, ctx.state);
   transitionMessage(runDir, message.id, "pending");
   if (!dispatchOnly) {
-    const submitted = await submitMessageToAgent(runDir, loadConfig(), message, "EvaluatorAgent-Model", queueItem.folder);
-    if (!submitted.ok) throw new Error(`Failed to submit message ${message.id} to EvaluatorAgent-Model`);
+    const submitted = await submitMessageToAgent(runDir, config, message, evaluator, queueItem.folder);
+    if (!submitted.ok) throw new Error(`Failed to submit message ${message.id} to ${evaluator}`);
   }
   emit(runDir, "evaluation_dispatched", { caseId: queueItem.id, attempt: queueItem.attempts, messageId: message.id, dispatchOnly });
   return true;
@@ -1849,7 +1860,7 @@ function detectActiveRunnerBypass(runDir, ctx) {
   } catch {
     return [];
   }
-  const paneId = panes["RunnerAgent-Model"]?.paneId;
+  const paneId = panes?.[runnerAgentName(loadConfig())]?.paneId;
   if (!paneId) return [];
   const transcript = capturePane(paneId, 200);
   return detectRunnerBypassViolations(transcript, "runner-pane", runnerGuardOptions(ctx));
@@ -1951,7 +1962,7 @@ export async function reportCaseResultToProvider(runDir, ctx, caseId, status, { 
     },
     artifactPaths: Object.values(artifacts).filter((path) => existsSync(path))
   });
-  writeFileSync(join(attemptDir, "provider-dispatch.json"), `${JSON.stringify(message, null, 2)}\n`);
+  writeJson(join(attemptDir, "provider-dispatch.json"), message);
   transitionMessage(runDir, message.id, "pending");
   if (!dispatchOnly) {
     const submitted = await submitMessageToAgent(runDir, loadConfig(), message, message.to, queueItem.folder);
@@ -1973,7 +1984,7 @@ function writeLoopStationFailure(attemptDir, queueItem, completion) {
     required: completion.required ?? {},
     note: "Loop-station rejected this runner attempt before advancing the queue. Provider review should inspect the raw attempt directory and evidence paths."
   };
-  writeFileSync(join(attemptDir, "loop-station-failure.json"), `${JSON.stringify(payload, null, 2)}\n`);
+  writeJson(join(attemptDir, "loop-station-failure.json"), payload);
   writeFileSync(join(attemptDir, "loop-station-failure.md"), `# Loop Station Failure
 
 Status: failed
@@ -2123,13 +2134,13 @@ async function ensureProviderFollowUp(runDir, ctx, queueItem, response, { dispat
     },
     artifactPaths: Object.values(providerResponses)
   });
-  writeFileSync(markerPath, `${JSON.stringify({
+  writeJson(markerPath, {
     messageId: message.id,
     caseId: queueItem.id,
     attempt,
     reason: response.reason,
     createdAt: new Date().toISOString()
-  }, null, 2)}\n`);
+  });
   transitionMessage(runDir, message.id, "pending");
   emit(runDir, "provider_response_followup_created", { caseId: queueItem.id, attempt, reason: response.reason, messageId: message.id });
   if (!dispatchOnly) {
@@ -2346,8 +2357,8 @@ function suppressCodexUpdatePrompt() {
   const versionPath = join(homedir(), ".codex", "version.json");
   if (!existsSync(versionPath)) return;
   const version = JSON.parse(readFileSync(versionPath, "utf8"));
-  if (version.latest_version && version.dismissed_version !== version.latest_version) {
+  if (version?.latest_version && version.dismissed_version !== version.latest_version) {
     version.dismissed_version = version.latest_version;
-    writeFileSync(versionPath, `${JSON.stringify(version)}\n`);
+    writeJson(versionPath, version);
   }
 }

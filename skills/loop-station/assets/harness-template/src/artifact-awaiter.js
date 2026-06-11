@@ -41,8 +41,15 @@ export async function waitForArtifacts(runDir, message, artifacts, options = {})
 }
 
 function artifactReady(path) {
+  // Fast path: most poll ticks happen before the artifact exists; avoid the
+  // cost of throwing/catching ENOENT every tick.
   if (!existsSync(path)) return false;
-  return readFileSync(path, "utf8").trim().length > 0;
+  // Still guard the read: the file can vanish between checks (write-then-rename).
+  try {
+    return readFileSync(path, "utf8").trim().length > 0;
+  } catch {
+    return false;
+  }
 }
 
 function sleep(ms) {

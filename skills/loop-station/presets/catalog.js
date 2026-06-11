@@ -1,5 +1,5 @@
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ROLE_TYPE_ORDER } from "./definitions.js";
 
@@ -469,5 +469,13 @@ function readJson(filePath) {
 }
 
 function writeJson(filePath, value) {
-  writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
+  // Atomic write-then-rename, with temp cleanup on failure (matches harness fs.writeJson).
+  const tempPath = join(dirname(filePath), `.${basename(filePath)}.${process.pid}.tmp`);
+  try {
+    writeFileSync(tempPath, `${JSON.stringify(value, null, 2)}\n`);
+    renameSync(tempPath, filePath);
+  } catch (error) {
+    try { rmSync(tempPath, { force: true }); } catch {}
+    throw error;
+  }
 }

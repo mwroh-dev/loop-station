@@ -74,8 +74,33 @@ export function createMessage(runDir, input) {
   return message;
 }
 
+const PROTECTED_MESSAGE_FIELDS = new Set([
+  "id",
+  "runId",
+  "from",
+  "to",
+  "type",
+  "caseId",
+  "attempt",
+  "stageId",
+  "createdAt",
+  "updatedAt",
+  "state",
+  "body",
+  "artifactPaths",
+  "transitions"
+]);
+
 export function transitionMessage(runDir, messageId, state, body = {}) {
   if (!MESSAGE_STATES.includes(state)) throw new Error(`Unknown message state: ${state}`);
+  // Tolerate an explicit null/non-object body the same way `...body` always did.
+  // Arrays are typeof "object" but would spread as numeric keys, so exclude them.
+  const safeBody = (body && typeof body === "object" && !Array.isArray(body)) ? body : {};
+  for (const key of Object.keys(safeBody)) {
+    if (PROTECTED_MESSAGE_FIELDS.has(key)) {
+      throw new Error(`transitionMessage body must not contain protected message field: ${key}`);
+    }
+  }
   const messages = readMessages(runDir);
   const index = messages.findIndex((message) => message.id === messageId);
   if (index === -1) throw new Error(`Unknown message: ${messageId}`);
@@ -84,8 +109,8 @@ export function transitionMessage(runDir, messageId, state, body = {}) {
     ...messages[index],
     state,
     updatedAt: now,
-    ...body,
-    transitions: [...(messages[index].transitions ?? []), { state, at: now, body }]
+    ...safeBody,
+    transitions: [...(messages[index].transitions ?? []), { state, at: now, body: safeBody }]
   };
   messages[index] = message;
   writeJson(messagesPath(runDir), messages);
@@ -101,11 +126,17 @@ export function failMessage(runDir, messageId, state, reason) {
 }
 
 export function readMessages(runDir) {
-  try {
-    return readJson(messagesPath(runDir));
-  } catch {
-    return [];
+  const path = messagesPath(runDir);
+  if (!existsSync(path)) return [];
+  // A corrupted messages.json must surface instead of being treated as an
+  // empty history: returning [] here would let the next upsert overwrite the
+  // entire dispatch record. A non-array (valid JSON, wrong shape) would also
+  // crash later findIndex/push, so fail fast with a clear error.
+  const messages = readJson(path);
+  if (!Array.isArray(messages)) {
+    throw new Error(`Corrupted messages file at ${path}: expected a JSON array`);
   }
+  return messages;
 }
 
 export function writeEnvelope(runDir, message) {

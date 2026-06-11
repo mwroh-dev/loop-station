@@ -61,13 +61,32 @@ export function createRun(options = {}) {
 }
 
 export function loadRun(runDir = requireRunDir()) {
+  // Validate shape on read: a corrupted-but-valid-JSON state file (null, wrong
+  // type) would otherwise crash the orchestrator with an opaque TypeError when
+  // it indexes the object or array-ops the queue/messages.
   return {
     runDir,
-    run: readJson(join(runDir, "run.json")),
-    state: readJson(join(runDir, "state.json")),
-    queue: readJson(join(runDir, "queue.json")),
-    messages: readJson(join(runDir, "messages.json"))
+    run: readObjectJson(join(runDir, "run.json"), "run.json"),
+    state: readObjectJson(join(runDir, "state.json"), "state.json"),
+    queue: readArrayJson(join(runDir, "queue.json"), "queue.json"),
+    messages: readArrayJson(join(runDir, "messages.json"), "messages.json")
   };
+}
+
+function readObjectJson(path, label) {
+  const value = readJson(path);
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`Corrupted ${label} at ${path}: expected a JSON object`);
+  }
+  return value;
+}
+
+function readArrayJson(path, label) {
+  const value = readJson(path);
+  if (!Array.isArray(value)) {
+    throw new Error(`Corrupted ${label} at ${path}: expected a JSON array`);
+  }
+  return value;
 }
 
 export function saveState(runDir, state) {
@@ -83,6 +102,9 @@ function createQueue(config, caseLimit = null) {
   if (!existsSync(manifestPath)) return [];
   const manifestDir = dirname(manifestPath);
   const cases = readJson(manifestPath);
+  if (!Array.isArray(cases)) {
+    throw new Error(`Corrupted case manifest at ${manifestPath}: expected a JSON array`);
+  }
   const limited = Number.isFinite(caseLimit) && caseLimit > 0 ? cases.slice(0, caseLimit) : cases;
   return limited.map((item, index) => ({
     id: item.id,
