@@ -13,8 +13,14 @@ export function writeJson(path, value) {
   ensureDir(dirname(path));
   // Write-then-rename keeps state files readable even if the process dies mid-write.
   const tempPath = join(dirname(path), `.${basename(path)}.${process.pid}.tmp`);
-  writeFileSync(tempPath, `${JSON.stringify(value, null, 2)}\n`);
-  renameSync(tempPath, path);
+  try {
+    writeFileSync(tempPath, `${JSON.stringify(value, null, 2)}\n`);
+    renameSync(tempPath, path);
+  } catch (error) {
+    // Don't leave an orphaned temp file behind on a failed write/rename.
+    try { rmSync(tempPath, { force: true }); } catch {}
+    throw error;
+  }
 }
 
 export function appendJsonLine(path, value) {
