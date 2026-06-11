@@ -712,8 +712,10 @@ function hasStageHumanCheckpoint(stage) {
 }
 
 function normalizePresetSelections(selections) {
+  const roles = selections.roles;
   return {
-    roles: typeof selections.roles === "object" && selections.roles !== null ? selections.roles : {}
+    // Arrays are typeof "object" but are not a valid role map; fall back to {}.
+    roles: roles && typeof roles === "object" && !Array.isArray(roles) ? roles : {}
   };
 }
 
