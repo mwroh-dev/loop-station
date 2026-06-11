@@ -94,7 +94,8 @@ const PROTECTED_MESSAGE_FIELDS = new Set([
 export function transitionMessage(runDir, messageId, state, body = {}) {
   if (!MESSAGE_STATES.includes(state)) throw new Error(`Unknown message state: ${state}`);
   // Tolerate an explicit null/non-object body the same way `...body` always did.
-  const safeBody = (body && typeof body === "object") ? body : {};
+  // Arrays are typeof "object" but would spread as numeric keys, so exclude them.
+  const safeBody = (body && typeof body === "object" && !Array.isArray(body)) ? body : {};
   for (const key of Object.keys(safeBody)) {
     if (PROTECTED_MESSAGE_FIELDS.has(key)) {
       throw new Error(`transitionMessage body must not contain protected message field: ${key}`);

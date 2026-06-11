@@ -189,6 +189,12 @@ describe("mailbox lifecycle", () => {
     // A null/omitted body must not crash (it behaves like the old `...body` no-op).
     assert.doesNotThrow(() => transitionMessage(dir, message.id, "submitted", null));
     assert.equal(transitionMessage(dir, message.id, "accepted_by_pane").state, "accepted_by_pane");
+
+    // An array body must not pollute the message with numeric keys.
+    const afterArray = transitionMessage(dir, message.id, "processing", ["x", "y"]);
+    assert.equal(afterArray.state, "processing");
+    assert.equal("0" in afterArray, false);
+    assert.equal("1" in afterArray, false);
   });
 
   it("surfaces corrupted messages.json instead of silently resetting history", () => {
