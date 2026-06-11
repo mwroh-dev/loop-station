@@ -50,6 +50,24 @@ fix was verified, and a reusable live-verification procedure for future runtime 
 - `bin/loop-station`: `readOption` errors clearly (`Missing value for --x`) when a flag has
   no value instead of throwing an opaque `resolve(undefined)`.
 
+### Review follow-up + pattern sweep
+
+After the PR review (Gemini), the same defect classes were swept across the codebase and the
+remaining instances fixed:
+
+- **null-guard before iteration** (the `Object.keys(null)` class): `transitionMessage` now
+  treats a null/non-object body as a no-op; `profiles.normalizeRoleCounts` guards an explicit
+  null before `Object.entries`.
+- **double `statSync` + TOCTOU** (the existsSync/read race class): `artifact-awaiter` keeps an
+  `existsSync` fast path before the guarded read; `completion.isNonEmptyFile` and the
+  `artifact-schema` stage check collapse to a single guarded `statSync` so a file vanishing
+  mid-check returns "missing" instead of throwing.
+- **atomic state writes** (the M1 class): `fs.writeJson` cleans up its temp file on failure,
+  and every JSON state/evidence write now routes through an atomic write-then-rename —
+  `cli.js` dispatch/evidence records, `bin/loop-station` `station.json`, and
+  `presets/catalog.js` recommendation/role materialization. Markdown/plain-text writes and the
+  build-time `presets/generate.js` tool are intentionally out of scope.
+
 ## Verification methodology
 
 Two layers, because neither alone is sufficient:
