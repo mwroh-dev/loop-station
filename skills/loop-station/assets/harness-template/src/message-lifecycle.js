@@ -130,8 +130,13 @@ export function readMessages(runDir) {
   if (!existsSync(path)) return [];
   // A corrupted messages.json must surface instead of being treated as an
   // empty history: returning [] here would let the next upsert overwrite the
-  // entire dispatch record.
-  return readJson(path);
+  // entire dispatch record. A non-array (valid JSON, wrong shape) would also
+  // crash later findIndex/push, so fail fast with a clear error.
+  const messages = readJson(path);
+  if (!Array.isArray(messages)) {
+    throw new Error(`Corrupted messages file at ${path}: expected a JSON array`);
+  }
+  return messages;
 }
 
 export function writeEnvelope(runDir, message) {

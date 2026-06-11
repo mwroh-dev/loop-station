@@ -1575,7 +1575,7 @@ function detectRunnerBypassForAgent(runDir, agentName, ctx, stage = null) {
   } catch {
     return [];
   }
-  const paneId = panes[agentName]?.paneId;
+  const paneId = panes?.[agentName]?.paneId;
   if (!paneId) return [];
   const transcript = capturePane(paneId, 200);
   return detectRunnerBypassViolations(transcript, `${agentName}-pane`, runnerGuardOptions(ctx, stage));
@@ -1860,7 +1860,7 @@ function detectActiveRunnerBypass(runDir, ctx) {
   } catch {
     return [];
   }
-  const paneId = panes[runnerAgentName(loadConfig())]?.paneId;
+  const paneId = panes?.[runnerAgentName(loadConfig())]?.paneId;
   if (!paneId) return [];
   const transcript = capturePane(paneId, 200);
   return detectRunnerBypassViolations(transcript, "runner-pane", runnerGuardOptions(ctx));
@@ -2357,7 +2357,7 @@ function suppressCodexUpdatePrompt() {
   const versionPath = join(homedir(), ".codex", "version.json");
   if (!existsSync(versionPath)) return;
   const version = JSON.parse(readFileSync(versionPath, "utf8"));
-  if (version.latest_version && version.dismissed_version !== version.latest_version) {
+  if (version?.latest_version && version.dismissed_version !== version.latest_version) {
     version.dismissed_version = version.latest_version;
     writeJson(versionPath, version);
   }

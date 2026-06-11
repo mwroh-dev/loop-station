@@ -214,6 +214,12 @@ describe("mailbox lifecycle", () => {
     writeFileSync(join(dir, "messages.json"), "[{\"id\": \"message-1\"");
 
     assert.throws(() => readMessages(dir), SyntaxError);
+
+    // Valid JSON but the wrong shape (null/object) must also fail fast.
+    writeFileSync(join(dir, "messages.json"), "null");
+    assert.throws(() => readMessages(dir), /expected a JSON array/);
+    writeFileSync(join(dir, "messages.json"), "{}");
+    assert.throws(() => readMessages(dir), /expected a JSON array/);
   });
 });
 
