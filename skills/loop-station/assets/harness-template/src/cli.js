@@ -7,7 +7,7 @@ import { stdin as input, stdout as output } from "node:process";
 import { loadConfig } from "./config.js";
 import { createRun, loadRun, requireRunDir, saveQueue, saveState } from "./run-store.js";
 import { emit } from "./events.js";
-import { ensureDir, removePath } from "./fs.js";
+import { ensureDir, removePath, writeJson } from "./fs.js";
 import { capturePane, createTmuxStation, focusStation, killPane, killSession, readStationTopology, respawnAgentPane, updateStationTopology } from "./tmux-station.js";
 import { runOrchestrator } from "./orchestrator.js";
 import { prepareStationControlFiles, requestStop, startBackgroundOrchestrator, waitForStop, writeStationSummary } from "./station-control.js";
@@ -476,7 +476,7 @@ async function dispatchNextCase({ dispatchOnly }) {
   const attempt = queueItem.attempts + 1;
   const attemptDir = join(runDir, "cases", queueItem.id, `attempt-${attempt}`);
   ensureDir(attemptDir);
-  writeFileSync(join(attemptDir, "case-folder-before.json"), `${JSON.stringify(snapshotCaseFolder(queueItem.folder), null, 2)}\n`);
+  writeJson(join(attemptDir, "case-folder-before.json"), snapshotCaseFolder(queueItem.folder));
   const requiredOutputs = {
     runnerReport: join(attemptDir, "runner-report.md"),
     runnerMetadata: join(attemptDir, "runner-metadata.json"),
@@ -520,7 +520,7 @@ async function dispatchNextCase({ dispatchOnly }) {
     },
     artifactPaths: Object.values(requiredOutputs)
   });
-  writeFileSync(join(attemptDir, "dispatch.json"), `${JSON.stringify(message, null, 2)}\n`);
+  writeJson(join(attemptDir, "dispatch.json"), message);
 
   queueItem.status = "active";
   queueItem.attempts = attempt;
@@ -603,7 +603,7 @@ async function dispatchNextActionPipelineCase(runDir, ctx, config, queueItem, { 
   const attempt = queueItem.attempts + 1;
   const attemptDir = join(runDir, "cases", queueItem.id, `attempt-${attempt}`);
   ensureDir(attemptDir);
-  writeFileSync(join(attemptDir, "case-folder-before.json"), `${JSON.stringify(snapshotCaseFolder(queueItem.folder), null, 2)}\n`);
+  writeJson(join(attemptDir, "case-folder-before.json"), snapshotCaseFolder(queueItem.folder));
   queueItem.status = "active";
   queueItem.attempts = attempt;
   ctx.state.activeCaseId = queueItem.id;
@@ -646,7 +646,7 @@ async function startSequentialActionStage(runDir, ctx, config, queueItem, stage,
     },
     artifactPaths: requiredArtifacts
   });
-  writeFileSync(join(stageDir, "dispatch.json"), `${JSON.stringify(message, null, 2)}\n`);
+  writeJson(join(stageDir, "dispatch.json"), message);
   ctx.state.activeStageId = stage.id;
   saveState(runDir, ctx.state);
   transitionMessage(runDir, message.id, "pending");
@@ -803,7 +803,7 @@ async function startActionPipelineEvaluationStage(runDir, ctx, config, queueItem
     },
     artifactPaths: Object.values(requiredOutputs)
   });
-  writeFileSync(join(attemptDir, "evaluation-dispatch.json"), `${JSON.stringify(message, null, 2)}\n`);
+  writeJson(join(attemptDir, "evaluation-dispatch.json"), message);
   ctx.state.activeStageId = "evaluate-run";
   saveState(runDir, ctx.state);
   transitionMessage(runDir, message.id, "pending");
@@ -996,9 +996,9 @@ async function startManagedRunLane(runDir, ctx, config, queueItem, agentName, { 
   const attempt = queueItem.attempts + 1;
   const attemptDir = join(runDir, "cases", queueItem.id, `attempt-${attempt}`);
   ensureDir(attemptDir);
-  writeFileSync(join(attemptDir, "case-folder-before.json"), `${JSON.stringify(snapshotCaseFolder(queueItem.folder), null, 2)}\n`);
+  writeJson(join(attemptDir, "case-folder-before.json"), snapshotCaseFolder(queueItem.folder));
   const message = buildRunMessage(runDir, ctx, config, queueItem, attempt, attemptDir, agentName);
-  writeFileSync(join(attemptDir, "dispatch.json"), `${JSON.stringify(message, null, 2)}\n`);
+  writeJson(join(attemptDir, "dispatch.json"), message);
   queueItem.status = "active_run";
   queueItem.attempts = attempt;
   const lane = createLane(ctx.state, {
@@ -1299,7 +1299,7 @@ async function assignWaitingEvaluations(runDir, ctx, config, { dispatchOnly }) {
     if (!reviewer || !queueItem) break;
     const attemptDir = runnerAttemptDir(runDir, queueItem);
     const message = buildEvaluationMessage(runDir, ctx, config, queueItem, attemptDir, reviewer);
-    writeFileSync(join(attemptDir, "evaluation-dispatch.json"), `${JSON.stringify(message, null, 2)}\n`);
+    writeJson(join(attemptDir, "evaluation-dispatch.json"), message);
     queueItem.status = "active_evaluation";
     const lane = createLane(ctx.state, {
       role: agentRole({ name: reviewer }),
@@ -1374,7 +1374,7 @@ async function assignWaitingChallengeReviews(runDir, ctx, config, { dispatchOnly
     const attemptDir = runnerAttemptDir(runDir, queueItem);
     const priorVerdict = inspectEvaluatorAttempt(attemptDir);
     const message = buildChallengeReviewMessage(runDir, ctx, queueItem, attemptDir, reviewer, priorVerdict);
-    writeFileSync(join(attemptDir, "challenge-dispatch.json"), `${JSON.stringify(message, null, 2)}\n`);
+    writeJson(join(attemptDir, "challenge-dispatch.json"), message);
     queueItem.status = "active_challenge_review";
     const lane = createLane(ctx.state, {
       role: agentRole({ name: reviewer }),
@@ -1433,7 +1433,7 @@ async function assignWaitingProviders(runDir, ctx, config, { dispatchOnly }) {
     const queueItem = ctx.queue.find((item) => item.status === (isRecoveryLoop(config) ? "waiting_provider_fix" : "waiting_provider"));
     if (!provider || !queueItem) break;
     const message = buildProviderMessage(runDir, ctx, queueItem, "failed", provider);
-    writeFileSync(join(runnerAttemptDir(runDir, queueItem), "provider-dispatch.json"), `${JSON.stringify(message, null, 2)}\n`);
+    writeJson(join(runnerAttemptDir(runDir, queueItem), "provider-dispatch.json"), message);
     queueItem.status = isRecoveryLoop(config) ? "active_provider_fix" : "active_provider";
     const lane = createLane(ctx.state, {
       role: isRecoveryLoop(config) ? "provider_engineer" : "provider",
@@ -1502,7 +1502,7 @@ async function assignWaitingDeployVerifications(runDir, ctx, config, { dispatchO
     const queueItem = ctx.queue.find((item) => item.status === "waiting_deploy_verify");
     if (!verifier || !queueItem) break;
     const message = buildDeployVerifyMessage(runDir, ctx, queueItem, verifier);
-    writeFileSync(join(runnerAttemptDir(runDir, queueItem), "deploy-verify-dispatch.json"), `${JSON.stringify(message, null, 2)}\n`);
+    writeJson(join(runnerAttemptDir(runDir, queueItem), "deploy-verify-dispatch.json"), message);
     queueItem.status = "active_deploy_verify";
     const lane = createLane(ctx.state, {
       role: "deploy_verifier",
@@ -1757,7 +1757,7 @@ async function startEvaluationStage(runDir, ctx, queueItem, attemptDir, { dispat
     },
     artifactPaths: Object.values(requiredOutputs)
   });
-  writeFileSync(join(attemptDir, "evaluation-dispatch.json"), `${JSON.stringify(message, null, 2)}\n`);
+  writeJson(join(attemptDir, "evaluation-dispatch.json"), message);
   ctx.state.activeStageId = "evaluate";
   saveState(runDir, ctx.state);
   transitionMessage(runDir, message.id, "pending");
@@ -1962,7 +1962,7 @@ export async function reportCaseResultToProvider(runDir, ctx, caseId, status, { 
     },
     artifactPaths: Object.values(artifacts).filter((path) => existsSync(path))
   });
-  writeFileSync(join(attemptDir, "provider-dispatch.json"), `${JSON.stringify(message, null, 2)}\n`);
+  writeJson(join(attemptDir, "provider-dispatch.json"), message);
   transitionMessage(runDir, message.id, "pending");
   if (!dispatchOnly) {
     const submitted = await submitMessageToAgent(runDir, loadConfig(), message, message.to, queueItem.folder);
@@ -1984,7 +1984,7 @@ function writeLoopStationFailure(attemptDir, queueItem, completion) {
     required: completion.required ?? {},
     note: "Loop-station rejected this runner attempt before advancing the queue. Provider review should inspect the raw attempt directory and evidence paths."
   };
-  writeFileSync(join(attemptDir, "loop-station-failure.json"), `${JSON.stringify(payload, null, 2)}\n`);
+  writeJson(join(attemptDir, "loop-station-failure.json"), payload);
   writeFileSync(join(attemptDir, "loop-station-failure.md"), `# Loop Station Failure
 
 Status: failed
@@ -2134,13 +2134,13 @@ async function ensureProviderFollowUp(runDir, ctx, queueItem, response, { dispat
     },
     artifactPaths: Object.values(providerResponses)
   });
-  writeFileSync(markerPath, `${JSON.stringify({
+  writeJson(markerPath, {
     messageId: message.id,
     caseId: queueItem.id,
     attempt,
     reason: response.reason,
     createdAt: new Date().toISOString()
-  }, null, 2)}\n`);
+  });
   transitionMessage(runDir, message.id, "pending");
   emit(runDir, "provider_response_followup_created", { caseId: queueItem.id, attempt, reason: response.reason, messageId: message.id });
   if (!dispatchOnly) {
@@ -2359,6 +2359,6 @@ function suppressCodexUpdatePrompt() {
   const version = JSON.parse(readFileSync(versionPath, "utf8"));
   if (version.latest_version && version.dismissed_version !== version.latest_version) {
     version.dismissed_version = version.latest_version;
-    writeFileSync(versionPath, `${JSON.stringify(version)}\n`);
+    writeJson(versionPath, version);
   }
 }

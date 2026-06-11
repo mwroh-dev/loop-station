@@ -9,6 +9,7 @@ import { assertConsumerSafeSetupSpec, projectLocalLoopStationSkillRoot as localS
 import { discoverSkillProfile } from "../skills/loop-station/assets/harness-template/src/skill-contract-discovery.js";
 import { materializeAgentsFromLayout, normalizeLayoutConfig } from "../skills/loop-station/assets/harness-template/src/layout-config.js";
 import { profileDefinition } from "../skills/loop-station/assets/harness-template/src/profiles.js";
+import { writeJson } from "../skills/loop-station/assets/harness-template/src/fs.js";
 import {
   analyzePresetRecommendationCompatibility,
   applyPresetSelections,
@@ -81,7 +82,7 @@ async function setup(args) {
   }
 
   const config = buildSetupStationConfig(project, seeded);
-  writeFileSync(join(stationRoot, "station.json"), `${JSON.stringify(config, null, 2)}\n`);
+  writeJson(join(stationRoot, "station.json"), config);
   const materialized = materializePresetRecommendation({
     stationRoot,
     recommendation: presetRecommendation,
@@ -132,7 +133,7 @@ function install(args) {
   });
   mkdirSync(join(stationRoot, "runs"), { recursive: true });
   mkdirSync(join(stationRoot, "cases"), { recursive: true });
-  writeFileSync(join(stationRoot, "station.json"), `${JSON.stringify(projectStationConfig(), null, 2)}\n`);
+  writeJson(join(stationRoot, "station.json"), projectStationConfig());
   console.log(`${existed ? "Replaced" : "Installed"} loop-station install at ${stationRoot}`);
 }
 
